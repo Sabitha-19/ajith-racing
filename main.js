@@ -1,55 +1,52 @@
-// ===============================
-// IMPORT TOUCH CONTROLS
-// ===============================
 import TouchControls from "./scripts/TouchControls.js";
 import Racer from "./scripts/Racer.js";
+import Track from "./scripts/Track.js";
+import Camera from "./scripts/Camera.js";
 
-// ===============================
-// MAIN GAME SETUP
-// ===============================
-let canvas, ctx;
-let racer;
-let controls;
+// Canvas setup
+const canvas = document.querySelector("canvas");
+const ctx = canvas.getContext("2d");
 
-window.onload = () => {
-    setup();
-    gameLoop();
-};
-
-function setup() {
-    // Create canvas
-    canvas = document.createElement("canvas");
+function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-
-    document.getElementById("game-container").appendChild(canvas);
-    ctx = canvas.getContext("2d");
-
-    // Create the racer
-    racer = new Racer();
-
-    // Create touch controls (mobile)
-    controls = new TouchControls();
 }
+resize();
+window.addEventListener("resize", resize);
 
-// ===============================
-// GAME LOOP
-// ===============================
-function gameLoop() {
-    update();
-    draw();
+// Load images
+const carImage = new Image();
+carImage.src = "assets/car.png";
 
-    requestAnimationFrame(gameLoop);
-}
+const roadImage = new Image();
+roadImage.src = "assets/road.png";
 
-function update() {
-    const input = controls.getInput();
+// Create systems
+const controls = new TouchControls();
+const racer = new Racer(carImage);
+const track = new Track(roadImage);
+const camera = new Camera();
 
-    racer.update(input);
-}
+// Game Loop
+function loop() {
+    requestAnimationFrame(loop);
 
-function draw() {
+    // Update
+    controls.update();
+    racer.update(controls);
+    camera.update(racer);
+    track.update(racer);
+
+    // Draw
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    racer.draw(ctx);
+    track.draw(ctx, camera);
+    racer.draw(ctx, camera);
+
+    // HUD (speed display)
+    ctx.fillStyle = "white";
+    ctx.font = "22px Arial";
+    ctx.fillText("Speed: " + Math.round(racer.speed), 20, 40);
 }
+loop();
+
