@@ -1,0 +1,63 @@
+/* Fullscreen Game Area */
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+    font-family: Arial, sans-serif;
+}
+
+/* Game canvas container */
+#game-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+
+/* =============================== */
+/*   TOUCH CONTROLS (MOBILE)       */
+/* =============================== */
+
+/* Joystick outer circle */
+.touch-joystick {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Joystick thumb (inner circle) */
+.touch-joystick-thumb {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 150, 255, 0.6);
+    border-radius: 50%;
+    transition: 0.05s linear;
+}
+
+/* NITRO button */
+.nitro-button {
+    position: absolute;
+    bottom: 40px;
+    right: 40px;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: rgba(255, 80, 80, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(3px);
+}
+
+/* Nitro button icon */
+.nitro-button img {
+    width: 55px;
+    height: 55px;
+}
