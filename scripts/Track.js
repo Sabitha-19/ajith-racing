@@ -31,31 +31,37 @@ export default class Track {
     }
 
     draw(ctx, camera) {
-        this.tiles.forEach(tile => {
-            const drawX =
-                tile.x * this.tileWidth -
-                camera.x +
-                window.innerWidth / 2;
+    const w = this.image.width;
+    const h = this.image.height;
 
-            const drawY =
-                tile.y * this.tileHeight -
-                camera.y +
-                window.innerHeight / 2;
+    const screenX = -camera.x + ctx.canvas.width / 2;
+    const screenY = -camera.y + ctx.canvas.height / 2;
 
-            if (this.sprite.complete) {
-                ctx.drawImage(
-                    this.sprite,
-                    drawX,
-                    drawY,
-                    this.tileWidth,
-                    this.tileHeight
-                );
-            } else {
-                // Fallback green ground
-                ctx.fillStyle = "#208020";
-                ctx.fillRect(drawX, drawY, this.tileWidth, this.tileHeight);
-            }
-        });
+    // Draw looping road tiles
+    for (let x = -1; x <= 1; x++) {
+        for (let y = -1; y <= 1; y++) {
+            ctx.drawImage(
+                this.image,
+                screenX + x * w,
+                screenY + y * h,
+                w,
+                h
+            );
+        }
     }
+
+    // ---- START LINE ----
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    ctx.fillStyle = "white";
+    ctx.fillRect(-50, -300, 300, 20); // horizontal start line
+    ctx.restore();
+
+    // ---- FINISH LINE ----
+    ctx.save();
+    ctx.translate(screenX, screenY);
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(1000, 800, 300, 20); // finish line
+    ctx.restore();
 }
 
