@@ -74,3 +74,5 @@ enemies.forEach(e => e.draw(ctx, camera));
 }
 loop();
 
+
+
