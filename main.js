@@ -4,6 +4,9 @@ import Track from "./scripts/Track.js";
 import Camera from "./scripts/Camera.js";
 import EnemyRacer from "./scripts/EnemyRacer.js";
 
+let selectedCountry = null;
+let countryData = null;
+
 
 // Canvas setup
 const canvas = document.querySelector("canvas");
@@ -45,6 +48,24 @@ for (let i = 0; i < 5; i++) {
     );
 }
 
+
+async function chooseCountry(country) {
+    const res = await fetch("data/countries.json");
+    const all = await res.json();
+    selectedCountry = country;
+    countryData = all[country];
+
+    // Load road + background
+    roadImage.src = countryData.road;
+    bgImage.src = countryData.background;
+
+    // Set start position
+    racer.x = countryData.start.x;
+    racer.y = countryData.start.y;
+
+    // Hide menu
+    document.getElementById("countryMenu").style.display = "none";
+}
 
 // Game Loop
 function loop() {
