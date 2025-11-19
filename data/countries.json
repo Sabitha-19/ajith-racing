@@ -1,0 +1,107 @@
+{
+    "india": {
+        "name": "India",
+        "road": "assets/road_india.png",
+        "background": "assets/bg_india.png",
+        "difficulty": 1,
+        "start": { "x": -50, "y": -300 },
+        "finish": { "x": 1200, "y": 900 }
+    },
+    "japan": {
+        "name": "Japan",
+        "road": "assets/road_japan.png",
+        "background": "assets/bg_japan.png",
+        "difficulty": 2,
+        "start": { "x": -50, "y": -200 },
+        "finish": { "x": 1600, "y": 1200 }
+    },
+    "usa": {
+        "name": "USA",
+        "road": "assets/road_usa.png",
+        "background": "assets/bg_usa.png",
+        "difficulty": 3,
+        "start": { "x": 0, "y": -400 },
+        "finish": { "x": 2000, "y": 1500 }
+    }
+}
+,
+"france": {
+    "name": "France",
+    "road": "assets/road_france.png",
+    "background": "assets/bg_france.png",
+    "difficulty": 2,
+    "start": { "x": -100, "y": -250 },
+    "finish": { "x": 1400, "y": 1000 }
+},
+"italy": {
+    "name": "Italy",
+    "road": "assets/road_italy.png",
+    "background": "assets/bg_italy.png",
+    "difficulty": 2,
+    "start": { "x": -60, "y": -300 },
+    "finish": { "x": 1500, "y": 1300 }
+},
+"germany": {
+    "name": "Germany",
+    "road": "assets/road_germany.png",
+    "background": "assets/bg_germany.png",
+    "difficulty": 3,
+    "start": { "x": -30, "y": -350 },
+    "finish": { "x": 1800, "y": 1500 }
+},
+"brazil": {
+    "name": "Brazil",
+    "road": "assets/road_brazil.png",
+    "background": "assets/bg_brazil.png",
+    "difficulty": 3,
+    "start": { "x": 0, "y": -200 },
+    "finish": { "x": 1600, "y": 1500 }
+},
+"australia": {
+    "name": "Australia",
+    "road": "assets/road_australia.png",
+    "background": "assets/bg_australia.png",
+    "difficulty": 2,
+    "start": { "x": -80, "y": -220 },
+    "finish": { "x": 1300, "y": 900 }
+},
+"uae": {
+    "name": "Dubai / UAE",
+    "road": "assets/road_uae.png",
+    "background": "assets/bg_uae.png",
+    "difficulty": 4,
+    "start": { "x": -100, "y": -400 },
+    "finish": { "x": 2200, "y": 1600 }
+},
+"china": {
+    "name": "China",
+    "road": "assets/road_china.png",
+    "background": "assets/bg_china.png",
+    "difficulty": 3,
+    "start": { "x": -150, "y": -300 },
+    "finish": { "x": 1700, "y": 1400 }
+},
+"canada": {
+    "name": "Canada",
+    "road": "assets/road_canada.png",
+    "background": "assets/bg_canada.png",
+    "difficulty": 2,
+    "start": { "x": -50, "y": -350 },
+    "finish": { "x": 1600, "y": 1200 }
+},
+"uk": {
+    "name": "United Kingdom",
+    "road": "assets/road_uk.png",
+    "background": "assets/bg_uk.png",
+    "difficulty": 3,
+    "start": { "x": -20, "y": -260 },
+    "finish": { "x": 1800, "y": 1100 }
+},
+"southafrica": {
+    "name": "South Africa",
+    "road": "assets/road_southafrica.png",
+    "background": "assets/bg_southafrica.png",
+    "difficulty": 3,
+    "start": { "x": -40, "y": -300 },
+    "finish": { "x": 1900, "y": 1400 }
+}
