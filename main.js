@@ -29,6 +29,18 @@ roadImage.src = "assets/road.png";
 const enemyImage = new Image();
 enemyImage.src = "assets/enemy.png";
 
+// Load Sound Effects
+const engineSound = new Audio("assets/sounds/engine.mp3");
+engineSound.loop = true;
+engineSound.volume = 0.4;
+
+const driftSound = new Audio("assets/sounds/drift.mp3");
+driftSound.volume = 0.6;
+
+const nitroSound = new Audio("assets/sounds/nitro.mp3");
+nitroSound.volume = 0.8;
+
+
 
 // Create systems
 const controls = new TouchControls();
