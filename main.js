@@ -1,22 +1,27 @@
+// main.js
 import TouchControls from "./scripts/TouchControls.js";
 import Racer from "./scripts/Racer.js";
 import Track from "./scripts/Track.js";
 import Camera from "./scripts/Camera.js";
 import EnemyRacer from "./scripts/EnemyRacer.js";
 
-// ---------- CONFIG ----------
+// -------- CONFIG --------
 const ASSET_PATH = "assets/";
 const FLAME_SRC = "/mnt/data/A_2D_digital_illustration_of_a_nitro_can_is_featur.png"; 
-// If you want to use flame from repo instead, set FLAME_SRC = ASSET_PATH + "flame.png";
+// if you move flame into repo, change the above to ASSET_PATH + "flame.png"
 
-// ---------- Canvas ----------
+// -------- Canvas setup --------
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
-function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
 resize();
 window.addEventListener("resize", resize);
 
-// ---------- Helpers ----------
+// -------- Utilities --------
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function isColliding(a, b) {
   return (
     a.x < b.x + b.width &&
@@ -25,9 +30,8 @@ function isColliding(a, b) {
     a.y + a.height > b.y
   );
 }
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-// ---------- Images ----------
+// -------- Assets --------
 const carImage = new Image(); carImage.src = ASSET_PATH + "car.png";
 const roadImage = new Image(); roadImage.src = ASSET_PATH + "road.png";
 const enemyImage = new Image(); enemyImage.src = ASSET_PATH + "enemy.png";
@@ -36,35 +40,31 @@ const coinImage = new Image(); coinImage.src = ASSET_PATH + "coin.png";
 const nitroPickImage = new Image(); nitroPickImage.src = ASSET_PATH + "nitro.png";
 const healthPickImage = new Image(); healthPickImage.src = ASSET_PATH + "health.png";
 
-// flame visual uses the uploaded local file path so it will be available immediately in the environment
 const flameImage = new Image();
 flameImage.src = FLAME_SRC;
 
-// ---------- Sounds ----------
+// -------- Sounds (ensure these exist in assets/) --------
 const engineSound = new Audio(ASSET_PATH + "engine.mp3"); engineSound.loop = true; engineSound.volume = 0.45;
-const driftSound = new Audio(ASSET_PATH + "drift.mp3"); driftSound.volume = 0.7;
-const crashSound = new Audio(ASSET_PATH + "crash.mp3"); crashSound.volume = 0.85;
-const nitroSound = new Audio(ASSET_PATH + "nitro.mp3"); nitroSound.volume = 0.9;
-const brakeSound = new Audio(ASSET_PATH + "brake.mp3"); brakeSound.volume = 0.7;
+const driftSound  = new Audio(ASSET_PATH + "drift.mp3"); driftSound.volume  = 0.7;
+const crashSound  = new Audio(ASSET_PATH + "crash.mp3"); crashSound.volume  = 0.9;
+const nitroSound  = new Audio(ASSET_PATH + "nitro.mp3"); nitroSound.volume  = 0.9;
+const brakeSound  = new Audio(ASSET_PATH + "brake.mp3"); brakeSound.volume  = 0.7;
 
-// ---------- Game objects ----------
+// -------- Game objects --------
 const controls = new TouchControls();
-const racer = new Racer(carImage); // ensure Racer sets width/height properties in its constructor
+const racer = new Racer(carImage);
 const track = new Track(roadImage);
 const camera = new Camera();
 
-// ---------- Enemies ----------
+// enemies
 const enemies = [];
 for (let i = 0; i < 5; i++) {
   enemies.push(new EnemyRacer(enemyImage, Math.random() * 2400 - 1200, Math.random() * 2400 - 1200));
 }
 
-// ---------- Power-ups / Coins ----------
-// You asked coin size 1920x1920 — using those as the coin sprite size in-game.
-// Note: 1920 is large visually; gameplay will still work but coins will be huge on screen.
-const COIN_W = 1920;
-const COIN_H = 1920;
-
+// power-ups / coins
+// NOTE: you told coin size 1920x1920 previously — if this is too large change COIN_W/COIN_H to 64 or 128
+const COIN_W = 1920, COIN_H = 1920;
 const powerUps = [];
 for (let i = 0; i < 24; i++) {
   const type = ["coin","nitro","health"][Math.floor(Math.random()*3)];
@@ -74,15 +74,15 @@ for (let i = 0; i < 24; i++) {
     y: Math.random()*3000 - 1500,
     width: type === "coin" ? COIN_W : 64,
     height: type === "coin" ? COIN_H : 64,
-    angle: Math.random() * Math.PI * 2,
-    spin: Math.random() * 0.06 + 0.02
+    angle: Math.random()*Math.PI*2,
+    spin: Math.random()*0.06 + 0.02
   });
 }
 
 let score = 0;
 let screenFlash = 0;
 
-// ---------- Input adapter ----------
+// -------- Input adapter for different TouchControls versions --------
 function getInput() {
   if (!controls) return { x:0, y:0, nitro:false, brake:false };
   if (typeof controls.getInput === "function") {
@@ -94,6 +94,7 @@ function getInput() {
       brake: inp.brake ?? false
     };
   }
+  // fallback
   return {
     x: controls.input?.x ?? 0,
     y: controls.input?.y ?? 0,
@@ -102,7 +103,7 @@ function getInput() {
   };
 }
 
-// ---------- Nitro flame helper ----------
+// -------- Nitro flame draw helper --------
 function drawNitroFlame(ctx, racer, camera, intensity = 1) {
   if (!flameImage.complete) return;
   const px = racer.x - Math.cos(racer.angle) * (racer.height/2 + 8);
@@ -121,17 +122,17 @@ function drawNitroFlame(ctx, racer, camera, intensity = 1) {
   ctx.restore();
 }
 
-// ---------- Main loop ----------
+// -------- Main loop --------
 function loop() {
   requestAnimationFrame(loop);
   const input = getInput();
 
-  // Update objects
+  // Update game objects
   racer.update({ steer: input.x, throttle: input.y, nitro: input.nitro, brake: input.brake });
   camera.update(racer);
   track.update(racer);
   enemies.forEach(e => e.update(racer));
-  powerUps.forEach(p => { p.angle += p.spin; });
+  powerUps.forEach(p => p.angle += p.spin);
 
   // --- Sounds ---
   try {
@@ -139,15 +140,17 @@ function loop() {
   } catch(e){}
 
   const steerIntensity = Math.abs(input.x || 0);
-  if (steerIntensity > 0.45 && racer.speed > 2) { if (driftSound.paused) driftSound.play().catch(()=>{}); }
-  else { driftSound.pause(); driftSound.currentTime = 0; }
+  if (steerIntensity > 0.45 && racer.speed > 2) {
+    if (driftSound.paused) driftSound.play().catch(()=>{});
+  } else { driftSound.pause(); driftSound.currentTime = 0; }
 
   if (input.brake && racer.speed > 1) { if (brakeSound.paused) brakeSound.play().catch(()=>{}); }
 
-  if (input.nitro && racer.nitroActive) { if (nitroSound.paused) nitroSound.play().catch(()=>{}); } 
-  else { nitroSound.pause(); nitroSound.currentTime = 0; }
+  if (input.nitro && racer.nitroActive) {
+    if (nitroSound.paused) nitroSound.play().catch(()=>{});
+  } else { nitroSound.pause(); nitroSound.currentTime = 0; }
 
-  // --- Collisions: enemies ---
+  // --- Collisions with enemies (damage)
   for (const enemy of enemies) {
     enemy.width = enemy.width || 50;
     enemy.height = enemy.height || 100;
@@ -157,17 +160,17 @@ function loop() {
     if (isColliding(racer, enemy)) {
       crashSound.play().catch(()=>{});
       screenFlash = 0.95;
-      // small knockback and slow down
+      // knockback & slow
       racer.x -= Math.cos(racer.angle) * 60;
       racer.y -= Math.sin(racer.angle) * 60;
+      racer.takeDamage?.(20); // calls racer.takeDamage if exists
       racer.speed = Math.max(0, racer.speed * 0.2);
-      // push enemy away
       enemy.x += (Math.random() - 0.5) * 300;
       enemy.y += (Math.random() - 0.5) * 300;
     }
   }
 
-  // --- Collisions: power-ups (coins/nitro/health) ---
+  // --- Power-up collisions ---
   for (let i = powerUps.length - 1; i >= 0; i--) {
     const p = powerUps[i];
     const pBox = { x: p.x - p.width/2, y: p.y - p.height/2, width: p.width, height: p.height };
@@ -180,18 +183,19 @@ function loop() {
       } else if (p.type === "health") {
         racer.health = Math.min(100, (racer.health || 100) + 30);
       }
-      // respawn somewhere else (do not remove to keep map populated)
+      // respawn instead of remove
       p.x = Math.random()*3000 - 1500;
       p.y = Math.random()*3000 - 1500;
     }
   }
 
-  // --- Draw ---
+  // --- Drawing ---
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // track
   if (typeof track.draw === "function") track.draw(ctx, camera);
 
-  // draw power-ups
+  // power-ups
   for (const p of powerUps) {
     const sx = p.x - camera.x + canvas.width/2;
     const sy = p.y - camera.y + canvas.height/2;
@@ -208,20 +212,20 @@ function loop() {
     ctx.restore();
   }
 
-  // draw enemies
+  // enemies
   enemies.forEach(e => { if (typeof e.draw === "function") e.draw(ctx, camera); });
 
-  // draw racer
+  // racer
   racer.draw(ctx, camera);
 
-  // draw nitro flame when active
+  // nitro flame
   const nitroActive = !!racer.nitroTime || !!racer.nitroActive;
   if (nitroActive) {
     const intensity = clamp((racer.nitroTime || 1) / 1.6, 0.2, 1.5);
     drawNitroFlame(ctx, racer, camera, intensity);
   }
 
-  // HUD
+  // HUD - speed, coins, health, nitro
   ctx.save();
   ctx.fillStyle = "white";
   ctx.font = "20px Arial";
@@ -229,7 +233,7 @@ function loop() {
   ctx.fillStyle = "yellow";
   ctx.fillText("Coins: " + score, 20, 64);
 
-  // health bar top-right
+  // health bar (top-right)
   const health = clamp(racer.health ?? 100, 0, 100);
   const hbX = canvas.width - 220, hbY = 20, hbW = 200, hbH = 18;
   ctx.fillStyle = "#333"; ctx.fillRect(hbX, hbY, hbW, hbH);
@@ -239,7 +243,7 @@ function loop() {
   ctx.fillStyle = "white";
   ctx.fillText("HP", hbX - 36, hbY + 14);
 
-  // nitro bar below health
+  // nitro bar
   const nitroVal = clamp(racer.nitroTime ?? 0, 0, 1.6);
   const nbX = canvas.width - 220, nbY = 48, nbW = 200, nbH = 12;
   ctx.fillStyle = "#222"; ctx.fillRect(nbX, nbY, nbW, nbH);
