@@ -1,216 +1,119 @@
-// ===========================
-// 🍬 CANDY CRUSH PUZZLE
-// ===========================
+export default class Puzzle {
+    constructor() {
+        this.size = 6; // 6x6 candy grid
+        this.candies = ["red", "blue", "green", "yellow", "purple"];
+        this.grid = [];
 
-const canvas = document.getElementById("puzzleCanvas");
-const ctx = canvas.getContext("2d");
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = 360;
+        this.canvas.height = 360;
+        this.canvas.style.position = "absolute";
+        this.canvas.style.top = "50%";
+        this.canvas.style.left = "50%";
+        this.canvas.style.transform = "translate(-50%, -50%)";
+        this.canvas.style.border = "4px solid white";
+        this.canvas.style.zIndex = 999;
+        this.canvas.style.background = "#222";
 
-const ROWS = 8;
-const COLS = 8;
-const TILE = 50;
+        this.ctx = this.canvas.getContext("2d");
 
-let grid = [];
-let selected = null;
-let animating = false;
+        this.selected = null;
+        this.isSolved = false;
 
-// Candy colors
-const colors = ["red", "yellow", "blue", "green", "orange"];
+        this.generateGrid();
+        this.draw();
 
-// ===========================
-// CREATE RANDOM GRID
-// ===========================
-function createGrid() {
-    grid = [];
-    for (let r = 0; r < ROWS; r++) {
-        let row = [];
-        for (let c = 0; c < COLS; c++) {
-            row.push(colors[Math.floor(Math.random() * colors.length)]);
-        }
-        grid.push(row);
+        this.canvas.addEventListener("click", (e) =>
+            this.handleClick(e)
+        );
+
+        document.body.appendChild(this.canvas);
     }
-}
 
-createGrid();
-
-// ===========================
-// DRAW GRID
-// ===========================
-function drawGrid() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            ctx.fillStyle = grid[r][c];
-            ctx.fillRect(c * TILE, r * TILE, TILE - 2, TILE - 2);
-        }
-    }
-}
-
-drawGrid();
-
-// ===========================
-// SWAP TWO TILES
-// ===========================
-function swap(a, b) {
-    let temp = grid[a.r][a.c];
-    grid[a.r][a.c] = grid[b.r][b.c];
-    grid[b.r][b.c] = temp;
-}
-
-// ===========================
-// CHECK MATCHES
-// ===========================
-function findMatches() {
-    let matches = [];
-
-    // Horizontal matches
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS - 2; c++) {
-            if (
-                grid[r][c] === grid[r][c + 1] &&
-                grid[r][c] === grid[r][c + 2]
-            ) {
-                matches.push({ r, c });
-                matches.push({ r, c: c + 1 });
-                matches.push({ r, c: c + 2 });
+    generateGrid() {
+        for (let y = 0; y < this.size; y++) {
+            this.grid[y] = [];
+            for (let x = 0; x < this.size; x++) {
+                this.grid[y][x] =
+                    this.candies[Math.floor(Math.random() * this.candies.length)];
             }
         }
     }
 
-    // Vertical matches
-    for (let c = 0; c < COLS; c++) {
-        for (let r = 0; r < ROWS - 2; r++) {
-            if (
-                grid[r][c] === grid[r + 1][c] &&
-                grid[r][c] === grid[r + 2][c]
-            ) {
-                matches.push({ r, c });
-                matches.push({ r: r + 1, c });
-                matches.push({ r: r + 2, c });
+    draw() {
+        const tile = 60;
+        this.ctx.clearRect(0, 0, 360, 360);
+
+        for (let y = 0; y < this.size; y++) {
+            for (let x = 0; x < this.size; x++) {
+                this.ctx.fillStyle = this.grid[y][x];
+                this.ctx.fillRect(x * tile, y * tile, tile - 4, tile - 4);
             }
+        }
+
+        if (this.selected) {
+            this.ctx.strokeStyle = "white";
+            this.ctx.lineWidth = 4;
+            this.ctx.strokeRect(
+                this.selected.x * tile,
+                this.selected.y * tile,
+                tile - 4,
+                tile - 4
+            );
         }
     }
 
-    return matches;
-}
+    handleClick(e) {
+        const bounds = this.canvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - bounds.left) / 60);
+        const y = Math.floor((e.clientY - bounds.top) / 60);
 
-// ===========================
-// REMOVE MATCHES
-// ===========================
-function removeMatches(matches) {
-    for (let m of matches) {
-        grid[m.r][m.c] = null;
+        if (!this.selected) {
+            this.selected = { x, y };
+        } else {
+            this.swap(this.selected, { x, y });
+            this.selected = null;
+        }
+
+        this.draw();
     }
-}
 
-// ===========================
-// DROP TILES DOWN
-// ===========================
-function applyGravity() {
-    for (let c = 0; c < COLS; c++) {
-        for (let r = ROWS - 1; r >= 0; r--) {
-            if (grid[r][c] === null) {
-                for (let k = r - 1; k >= 0; k--) {
-                    if (grid[k][c] !== null) {
-                        grid[r][c] = grid[k][c];
-                        grid[k][c] = null;
-                        break;
-                    }
+    swap(a, b) {
+        const temp = this.grid[a.y][a.x];
+        this.grid[a.y][a.x] = this.grid[b.y][b.x];
+        this.grid[b.y][b.x] = temp;
+
+        this.checkMatch();
+    }
+
+    checkMatch() {
+        // simple puzzle win condition
+        // if any 3 same colors in a row → puzzle solved
+
+        for (let y = 0; y < this.size; y++) {
+            for (let x = 0; x < this.size - 2; x++) {
+                const c = this.grid[y][x];
+                if (
+                    c === this.grid[y][x + 1] &&
+                    c === this.grid[y][x + 2]
+                ) {
+                    this.complete();
                 }
             }
         }
     }
-}
 
-// ===========================
-// REFILL NEW TILES
-// ===========================
-function refillTiles() {
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            if (grid[r][c] === null) {
-                grid[r][c] = colors[Math.floor(Math.random() * colors.length)];
-            }
-        }
+    complete() {
+        this.isSolved = true;
+
+        this.canvas.style.transition = "0.8s";
+        this.canvas.style.opacity = 0;
+
+        setTimeout(() => {
+            this.canvas.remove();
+        }, 900);
+
+        // Trigger the game to start
+        window.startGameAfterPuzzle();
     }
 }
-
-// ===========================
-// CHECK IF PUZZLE IS SOLVED
-// ===========================
-function checkIfPuzzleSolved() {
-    // Example rule: make any 2 matches
-    puzzleMatches++;
-
-    if (puzzleMatches >= 2) {
-        endPuzzleAndStartGame();
-    }
-}
-
-let puzzleMatches = 0;
-
-// ===========================
-// USER CLICK HANDLING
-// ===========================
-canvas.addEventListener("click", (e) => {
-    if (animating) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const c = Math.floor(x / TILE);
-    const r = Math.floor(y / TILE);
-
-    if (!selected) {
-        selected = { r, c };
-        return;
-    }
-
-    // Only allow swapping adjacent tiles
-    if (Math.abs(selected.r - r) + Math.abs(selected.c - c) === 1) {
-        animating = true;
-
-        swap(selected, { r, c });
-
-        let matches = findMatches();
-
-        if (matches.length === 0) {
-            // Swap back if no match
-            swap(selected, { r, c });
-            animating = false;
-            selected = null;
-            drawGrid();
-            return;
-        }
-
-        // MATCH FOUND
-        checkIfPuzzleSolved();
-
-        removeMatches(matches);
-        applyGravity();
-        refillTiles();
-
-        selected = null;
-        animating = false;
-        drawGrid();
-    } else {
-        selected = { r, c };
-    }
-});
-
-// ===========================
-// START GAME AFTER PUZZLE
-// ===========================
-function endPuzzleAndStartGame() {
-    document.getElementById("puzzle-screen").style.display = "none";
-    document.getElementById("game-container").style.display = "block";
-    document.getElementById("countryMenu").style.display = "block";
-
-    // Start game loop in main.js
-    if (window.startGame) {
-        window.startGame();
-    }
-}
-
-export { endPuzzleAndStartGame };
