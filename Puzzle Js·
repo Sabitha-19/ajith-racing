@@ -1,0 +1,209 @@
+// scripts/puzzle.js
+// Simple match-3 puzzle used before each race.
+// Usage: include this script and call Puzzle.init(options) or it will auto-init on load.
+
+export default class Puzzle {
+  static init(opts = {}) {
+    if (this._initialized) return;
+    this._initialized = true;
+
+    const canvas = document.getElementById("puzzleCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const GRID = opts.gridSize || 8;
+    const TILE = Math.floor(canvas.width / GRID);
+    const TYPES = opts.tileTypes || 6;
+    const TARGET = opts.targetScore || 1200;
+    const REWARD = opts.reward || { coins: 50, nitro: 0.8 };
+
+    let grid = [];
+    let score = 0;
+    let moves = 0;
+    let selected = null;
+    let animating = false;
+
+    const COLORS = ["#FFD54F","#4FC3F7","#A1887F","#81C784","#CE93D8","#FF8A65","#90A4AE","#FFF176"];
+
+    function randType() { return Math.floor(Math.random() * TYPES); }
+
+    function fillGrid() {
+      grid = [];
+      for (let r=0;r<GRID;r++){
+        const row=[];
+        for (let c=0;c<GRID;c++){
+          let t = randType();
+          while ((c>=2 && row[c-1] === t && row[c-2] === t) || (r>=2 && grid[r-1][c] === t && grid[r-2][c] === t)) {
+            t = randType();
+          }
+          row.push(t);
+        }
+        grid.push(row);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (let r=0;r<GRID;r++){
+        for (let c=0;c<GRID;c++){
+          const x = c*TILE, y = r*TILE;
+          const t = grid[r][c];
+          ctx.fillStyle = COLORS[t % COLORS.length];
+          roundRect(ctx, x+4, y+4, TILE-8, TILE-8, 8, true, false);
+          ctx.fillStyle = "rgba(0,0,0,0.18)";
+          ctx.font = `${Math.floor(TILE/2)}px Arial`;
+          ctx.textAlign = "center"; ctx.textBaseline="middle";
+          ctx.fillText((t+1).toString(), x + TILE/2, y + TILE/2 + 2);
+        }
+      }
+      if (selected) {
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(selected.c*TILE+6, selected.r*TILE+6, TILE-12, TILE-12);
+      }
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x+r,y);
+      ctx.arcTo(x+w,y,x+w,y+h,r);
+      ctx.arcTo(x+w,y+h,x,y+h,r);
+      ctx.arcTo(x,y+h,x,y,r);
+      ctx.arcTo(x,y,x+w,y,r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    function swap(a, b) {
+      const tmp = grid[a.r][a.c];
+      grid[a.r][a.c] = grid[b.r][b.c];
+      grid[b.r][b.c] = tmp;
+    }
+
+    function adjacent(a,b) {
+      return Math.abs(a.r-b.r)+Math.abs(a.c-b.c) === 1;
+    }
+
+    function findMatches() {
+      const remove = [];
+      for (let r=0;r<GRID;r++){
+        let run = 1;
+        for (let c=1;c<=GRID;c++){
+          if (c<GRID && grid[r][c] === grid[r][c-1]) {
+            run++;
+          } else {
+            if (run >= 3) {
+              for (let k=0;k<run;k++) remove.push({r, c: c-1-k});
+            }
+            run = 1;
+          }
+        }
+      }
+
+      for (let c=0;c<GRID;c++){
+        let run = 1;
+        for (let r=1;r<=GRID;r++){
+          if (r<GRID && grid[r][c] === grid[r-1][c]) {
+            run++;
+          } else {
+            if (run >= 3) {
+              for (let k=0;k<run;k++) remove.push({r: r-1-k, c});
+            }
+            run = 1;
+          }
+        }
+      }
+
+      const key = (p)=>`${p.r},${p.c}`;
+      const unique = {};
+      const out = [];
+      for (const p of remove) {
+        if (!unique[key(p)]) { unique[key(p)] = true; out.push(p); }
+      }
+      return out;
+    }
+
+    function collapseAndRefill() {
+      for (let c=0;c<GRID;c++){
+        let write = GRID-1;
+        for (let r=GRID-1;r>=0;r--){
+          if (grid[r][c] != null) {
+            grid[write][c] = grid[r][c];
+            write--;
+          }
+        }
+        for (let r=write;r>=0;r--) grid[r][c] = randType();
+      }
+    }
+
+    function applyRemoval(matches) {
+      const count = matches.length;
+      const pts = count * 100;
+      score += pts;
+      document.getElementById("puzzleScore").innerText = score;
+    }
+
+    function attemptSwap(a,b) {
+      if (!adjacent(a,b)) return false;
+      swap(a,b);
+      const m = findMatches();
+      if (m.length === 0) { swap(a,b); return false; }
+      moves++;
+      document.getElementById("puzzleMoves").innerText = moves;
+      animating = true;
+      (function processChain(){
+        const matches = findMatches();
+        if (matches.length === 0) { animating = false; draw(); checkWin(); return; }
+        applyRemoval(matches);
+        for (const p of matches) grid[p.r][p.c] = null;
+        draw();
+        setTimeout(()=>{
+          collapseAndRefill();
+          draw();
+          setTimeout(processChain, 180);
+        }, 180);
+      })();
+      return true;
+    }
+
+    function checkWin(){
+      const elTarget = document.getElementById("puzzleTarget");
+      const target = parseInt(elTarget.innerText,10) || TARGET;
+      if (score >= target) {
+        onPuzzleComplete({score, moves, reward: REWARD});
+      }
+    }
+
+    function onPuzzleComplete(result) {
+      if (window.onPuzzleSuccess) window.onPuzzleSuccess(result);
+      const modal = document.getElementById("puzzleModal");
+      if (modal) modal.style.display = "none";
+    }
+
+    canvas.addEventListener("pointerdown", (ev)=>{
+      if (animating) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
+      if (r<0||r>=GRID||c<0||c>=GRID) return;
+      if (!selected) {
+        selected = {r,c};
+      } else {
+        const prev = selected;
+        const next = {r,c};
+        if (prev.r === next.r && prev.c === next.c) { selected = null; draw(); return; }
+        const ok = attemptSwap(prev, next);
+        selected = null;
+      }
+      draw();
+    });
+
+    window.addEventListener("keydown", (e)=>{
+      if (!selected) return;
+      let dr=0,dc=0;
+      if (e.key === "ArrowUp") dr=-1;
+      if (e.key === "ArrowDown") dr=1;
+      if (e.key === "ArrowLeft") dc=-1;
+      if (e.key === "ArrowRight") dc=1;
+      if (dr!==0 || dc
