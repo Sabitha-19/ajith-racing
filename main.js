@@ -3,6 +3,7 @@ import Racer from "./scripts/Racer.js";
 import Track from "./scripts/Track.js";
 import Camera from "./scripts/Camera.js";
 import EnemyRacer from "./scripts/EnemyRacer.js";
+import PowerUp from "./scripts/PowerUp.js";
 
 let selectedCountry = null;
 let countryData = null;
@@ -38,6 +39,17 @@ roadImage.src = "assets/road.png";
 const enemyImage = new Image();
 enemyImage.src = "assets/enemy.png";
 
+// Power-Up Images
+const coinImage = new Image();
+coinImage.src = "assets/coin.png";
+
+const nitroImage = new Image();
+nitroImage.src = "assets/nitro.png";
+
+const healthImage = new Image();
+healthImage.src = "assets/health.png";
+
+
 // Load Sounds
 const engineSound = new Audio("assets/engine.mp3");
 engineSound.loop = true;
@@ -46,6 +58,7 @@ const driftSound = new Audio("assets/drift.mp3");
 const crashSound = new Audio("assets/crash.mp3");
 const nitroSound = new Audio("assets/nitro.mp3");
 const brakeSound = new Audio("assets/brake.mp3");
+
 
 // Game Objects
 const controls = new TouchControls();
@@ -65,7 +78,17 @@ for (let i = 0; i < 5; i++) {
     );
 }
 
-// Country selection (if you use menu)
+// Power-Ups
+const powerUps = [
+    new PowerUp(coinImage, 300, 200, "coin"),
+    new PowerUp(coinImage, 600, -200, "coin"),
+    new PowerUp(nitroImage, 1200, 400, "nitro"),
+    new PowerUp(healthImage, -500, 900, "health"),
+];
+
+let score = 0;
+
+// Country selection (if menu exists)
 async function chooseCountry(country) {
     const res = await fetch("data/countries.json");
     const all = await res.json();
@@ -73,7 +96,6 @@ async function chooseCountry(country) {
     countryData = all[country];
 
     roadImage.src = countryData.road;
-    bgImage.src = countryData.background;
 
     racer.x = countryData.start.x;
     racer.y = countryData.start.y;
@@ -91,29 +113,25 @@ function loop() {
     camera.update(racer);
     track.update(racer);
     enemies.forEach(e => e.update(racer));
+    powerUps.forEach(p => p.update());
 
     // === SOUND SYSTEM ===
-
-    // Engine sound
     if (racer.speed > 0.5) {
         if (engineSound.paused) engineSound.play();
     } else {
         engineSound.pause();
     }
 
-    // Drift sound
     if (Math.abs(racer.turn) > 0.4 && racer.speed > 2) {
         if (driftSound.paused) driftSound.play();
     } else {
         driftSound.pause();
     }
 
-    // Brake sound
     if (controls.brake && racer.speed > 1) {
         brakeSound.play();
     }
 
-    // Nitro sound
     if (controls.nitro && racer.nitroActive) {
         if (nitroSound.paused) nitroSound.play();
     }
@@ -121,13 +139,27 @@ function loop() {
     // === COLLISION WITH ENEMIES ===
     for (const enemy of enemies) {
         if (isColliding(racer, enemy)) {
-            console.log("CRASH!");
             crashSound.play();
-
-            // Reset position after crash
             racer.x = 200;
             racer.y = 400;
             racer.speed = 0;
+        }
+    }
+
+    // === POWER-UP COLLISION ===
+    for (const p of powerUps) {
+        if (isColliding(racer, p)) {
+
+            if (p.type === "coin") score++;
+
+            if (p.type === "nitro") racer.nitro = 100;
+
+            if (p.type === "health")
+                racer.health = Math.min(100, racer.health + 30);
+
+            // respawn
+            p.x = Math.random() * 2000 - 1000;
+            p.y = Math.random() * 2000 - 1000;
         }
     }
 
@@ -135,6 +167,7 @@ function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     track.draw(ctx, camera);
+    powerUps.forEach(p => p.draw(ctx, camera));
     racer.draw(ctx, camera);
     enemies.forEach(e => e.draw(ctx, camera));
 
@@ -142,6 +175,7 @@ function loop() {
     ctx.fillStyle = "white";
     ctx.font = "22px Arial";
     ctx.fillText("Speed: " + Math.round(racer.speed), 20, 40);
+    ctx.fillText("Coins: " + score, 20, 70);
 }
 
 loop();
