@@ -19,6 +19,16 @@ function resize() {
 resize();
 window.addEventListener("resize", resize);
 
+function isColliding(a, b) {
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
+}
+
+
 // Load images
 const carImage = new Image();
 carImage.src = "assets/car.png";
@@ -30,16 +40,17 @@ const enemyImage = new Image();
 enemyImage.src = "assets/enemy.png";
 
 // Load Sound Effects
-const engineSound = new Audio("assets/sounds/engine.mp3");
+
+const engineSound = new Audio("assets/engine.mp3");
 engineSound.loop = true;
-engineSound.volume = 0.4;
 
-const driftSound = new Audio("assets/sounds/drift.mp3");
-driftSound.volume = 0.6;
+const driftSound = new Audio("assets/drift.mp3");
 
-const nitroSound = new Audio("assets/sounds/nitro.mp3");
-nitroSound.volume = 0.8;
+const crashSound = new Audio("assets/crash.mp3");
 
+const nitroSound = new Audio("assets/nitro.mp3");
+
+const brakeSound = new Audio("assets/brake.mp3");
 
 
 // Create systems
@@ -85,11 +96,34 @@ function loop() {
 
     // Update
     controls.update();
-    racer.update(controls);
+    racer.update(controls); 
     camera.update(racer);
     track.update(racer);
 enemies.forEach(e => e.update(racer));
+     // ENGINE SOUND
+if (racer.speed > 0.5) {
+    if (engineSound.paused) engineSound.play();
+} else {
+    engineSound.pause();
+}
+    
 
+// DRIFT SOUND
+if (Math.abs(racer.turn) > 0.4 && racer.speed > 2) {
+    if (driftSound.paused) driftSound.play();
+} else {
+    driftSound.pause();
+}
+
+
+// BRAKE SOUND
+if (controls.brake && racer.speed > 1) {
+    if (brakeSound.paused) brakeSound.play();
+} 
+    // NITRO SOUND
+if (controls.nitro && racer.nitroActive) {
+    if (nitroSound.paused) nitroSound.play();
+}
 
     // Draw
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -98,6 +132,20 @@ enemies.forEach(e => e.update(racer));
     racer.draw(ctx, camera);
     // Draw AI enemies
 enemies.forEach(e => e.draw(ctx, camera));
+
+    // Collision check with enemies
+for (const enemy of enemies) {
+    if (isColliding(player, enemy)) {
+        console.log("CRASH!");
+        // Play crash sound if available
+        if (sounds.crash) sounds.crash.play();
+
+        // Reset player or reduce health
+        player.x = 200;
+        player.y = 400;
+    }
+}
+
 
 
     // HUD (speed display)
