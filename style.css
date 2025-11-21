@@ -1,6 +1,6 @@
-/* =============================== */
-/*   GLOBAL RESET + BACKGROUND     */
-/* =============================== */
+/* =========================================================
+                      GLOBAL
+========================================================= */
 
 body {
     margin: 0;
@@ -15,86 +15,172 @@ body {
     position: relative;
 }
 
-/* =============================== */
-/*         TOUCH CONTROLS          */
-/* =============================== */
+/* =========================================================
+                      PUZZLE UI
+========================================================= */
 
-/* Joystick base circle */
+.puzzle-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+}
+
+.puzzle-box {
+    width: 320px;
+    height: 320px;
+    background: #222;
+    border-radius: 15px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.puzzle-tile {
+    background-size: cover;
+    background-position: center;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* blank space */
+.puzzle-empty {
+    background: #111;
+}
+
+/* =========================================================
+                  COUNTRY MENU
+========================================================= */
+
+.country-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20, 20, 20, 0.9);
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
+    width: 320px;
+    z-index: 15;
+}
+
+.country-menu h2 {
+    color: white;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.country-btn {
+    width: 100%;
+    padding: 12px;
+    background: #0078ff;
+    color: white;
+    font-size: 18px;
+    border: none;
+    margin: 8px 0;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.country-btn:hover {
+    background: #005fcc;
+}
+
+/* =========================================================
+                   MOBILE TOUCH CONTROLS
+========================================================= */
+
 .touch-joystick {
     position: absolute;
     bottom: 30px;
     left: 30px;
     width: 130px;
     height: 130px;
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 50%;
     backdrop-filter: blur(4px);
     display: flex;
-    align-items: center;
     justify-content: center;
-    z-index: 20;
+    align-items: center;
+    z-index: 10;
 }
 
-/* Joystick thumb */
 .touch-joystick-thumb {
-    width: 60px;
-    height: 60px;
-    background: rgba(0, 150, 255, 0.6);
+    width: 55px;
+    height: 55px;
+    background: rgba(0, 140, 255, 0.7);
     border-radius: 50%;
     transition: 0.05s linear;
 }
 
-/* Nitro button */
 .nitro-button {
     position: absolute;
     bottom: 40px;
     right: 40px;
-    width: 100px;
-    height: 100px;
+    width: 95px;
+    height: 95px;
+    background: rgba(255, 70, 70, 0.85);
     border-radius: 50%;
-    background: rgba(255, 80, 80, 0.8);
     display: flex;
     justify-content: center;
     align-items: center;
-    backdrop-filter: blur(3px);
-    z-index: 20;
+    backdrop-filter: blur(4px);
+    z-index: 10;
 }
 
-/* Nitro icon */
 .nitro-button img {
-    width: 60px;
-    height: 60px;
+    width: 55px;
+    height: 55px;
 }
 
-/* =============================== */
-/*         DEBUG UI BUTTONS        */
-/* =============================== */
+/* =========================================================
+                      HUD
+========================================================= */
+
+.hud {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    color: #fff;
+    font-size: 22px;
+    text-shadow: 0 0 6px black;
+    z-index: 12;
+}
+
+/* =========================================================
+                    DEBUG PANEL
+========================================================= */
 
 .debug-panel {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0,0,0,0.5);
-    padding: 10px 15px;
-    border-radius: 8px;
-    color: white;
-    font-size: 14px;
-    z-index: 9999;
-    display: none; /* enable only while developing */
+    right: 10px;
+    top: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 10px;
+    border-radius: 10px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.debug-panel button {
-    display: block;
-    width: 140px;
-    margin: 5px 0;
-    padding: 6px;
-    border: none;
-    border-radius: 6px;
+.debug-btn {
     background: #444;
     color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
     cursor: pointer;
 }
 
-.debug-panel button:hover {
+.debug-btn:hover {
     background: #666;
 }
