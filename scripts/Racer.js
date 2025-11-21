@@ -1,166 +1,253 @@
 // scripts/Racer.js
+// ES module — default export
+// Racer handles movement, drifting, nitro, health, crash flash and smoke particles.
+// Compatible with Camera (camera.x/camera.y) and TouchControls.getKeys() style input.
+
 export default class Racer {
-  constructor(sprite) {
+  /**
+   * @param {HTMLImageElement|null} sprite - racer sprite image (can be null)
+   * @param {object} opts - optional tuning values
+   */
+  constructor(sprite = null, opts = {}) {
     this.sprite = sprite;
 
-    // initial position (you can set from main.js chooseCountry)
-    this.x = window.innerWidth / 2;
-    this.y = window.innerHeight / 2;
-    this.angle = 0;
+    // Position (world coords)
+    this.x = opts.x ?? window.innerWidth / 2;
+    this.y = opts.y ?? window.innerHeight / 2;
 
-    // movement
-    this.speed = 0;
-    this.acc = 0.25;
-    this.maxSpeed = 8;
-    this.nitroSpeed = 15;
-    this.turnSpeed = 0.045;
-    this.friction = 0.94;
+    // Orientation & movement
+    this.angle = 0;            // radians
+    this.speed = 0;            // current speed
+    this.acc = opts.acc ?? 0.28;
+    this.maxSpeed = opts.maxSpeed ?? 8;
+    this.reverseMax = opts.reverseMax ?? -3;
+    this.friction = opts.friction ?? 0.94;
 
-    // visual size
-    this.width = 70;
-    this.height = 130;
+    // Turning / drifting
+    this.turnBase = opts.turnBase ?? 0.045;
+    this.driftMultiplier = opts.driftMultiplier ?? 1.6; // sharper turns at high speed
+    this.sideSlip = opts.sideSlip ?? 0.88; // visual drifting slippage factor
 
-    // health & damage
-    this.health = 100;
-    this.maxHealth = 100;
+    // Nitro
+    this.nitroMax = opts.nitroMax ?? 1.6; // seconds of nitro
+    this.nitroTime = 0;
+    this.nitroActive = false;
+    this.nitroBoost = opts.nitroBoost ?? 1.9; // speed multiplier while nitro
+    this.nitroCooldown = 0;
+
+    // Dimensions (for collisions)
+    this.width = opts.width ?? 70;
+    this.height = opts.height ?? 130;
+
+    // Health & damage
+    this.health = opts.health ?? 100;
+    this.maxHealth = opts.maxHealth ?? 100;
     this.damageCooldown = 0;
 
-    // nitro resource
-    this.nitroTime = 0; // seconds
-    this.nitroMax = 1.6;
-    this.nitroActive = false;
-    this.nitroCooldownTimer = 0;
-    this.nitroReady = true;
+    // Visual effects
+    this.smokeParticles = []; // little drifting smoke particles
+    this.maxSmoke = 80;
 
-    // smoke particles for drift
-    this.smokeParticles = [];
+    // Crash / flash
+    this.isCrashed = false;
+
+    // Gameplay bookkeeping
+    this.coins = 0;
+    this.score = 0;
   }
 
-  // public method to take damage
-  takeDamage(amount) {
+  // --- Damage API (respects global debug god mode if set) ---
+  takeDamage(amount = 10) {
+    if (window.debug?.godMode) return; // debug bypass
     if (this.damageCooldown > 0) return;
+
     this.health -= amount;
     if (this.health < 0) this.health = 0;
     this.damageCooldown = 30; // frames
+
+    // crash flash visual
+    this._flashScreen();
+
+    // small slow-down on hit
+    this.speed *= 0.4;
   }
 
-  // call each frame; input = { steer, throttle, nitro, brake }
+  heal(amount = 10) {
+    this.health = Math.min(this.maxHealth, this.health + amount);
+  }
+
+  _flashScreen() {
+    // quick red flash overlay appended to body
+    try {
+      const flash = document.createElement("div");
+      flash.style.position = "fixed";
+      flash.style.top = "0";
+      flash.style.left = "0";
+      flash.style.width = "100%";
+      flash.style.height = "100%";
+      flash.style.background = "rgba(255,0,0,0.28)";
+      flash.style.zIndex = 99999;
+      flash.style.pointerEvents = "none";
+      document.body.appendChild(flash);
+      setTimeout(() => document.body.removeChild(flash), 140);
+    } catch (e) {
+      // ignore (e.g., running in non-browser tests)
+    }
+  }
+
+  // --- Nitro activation (call from input) ---
+  startNitro() {
+    if (this.nitroTime <= 0 && this.nitroCooldown <= 0) {
+      this.nitroTime = this.nitroMax;
+      this.nitroActive = true;
+      this.nitroCooldown = this.nitroMax + 1.8; // cooldown period
+    }
+  }
+
+  // --- Per-frame update ---
+  // input object shape: { steer: -1..1, throttle: 0..1, nitro: boolean, brake: boolean }
   update(input = {}, dt = 1) {
-    const steer = input.steer ?? input.x ?? 0;
-    const throttle = Math.max(0, input.throttle ?? input.y ?? 0);
+    const steer = input.steer ?? 0;
+    const throttle = Math.max(0, input.throttle ?? 0);
+    const brake = !!input.brake;
+    const nitroPressed = !!input.nitro;
 
-    // steering with drift
-    let turnAmount = steer * this.turnSpeed;
-    if (this.speed > 5) turnAmount *= 1.6;
-    this.angle += turnAmount * dt;
-
-    // accelerate / brake
-    if (throttle > 0.01) {
-      this.speed += this.acc * throttle * dt;
-    } else {
-      this.speed *= this.friction;
+    // handle nitro request
+    if (nitroPressed && this.nitroCooldown <= 0 && this.nitroTime <= 0) {
+      this.startNitro();
     }
 
-    // nitro activation
-    if ((input.nitro || this.nitroActive) && this.nitroReady) {
-      if (this.nitroTime <= 0) {
-        this.nitroTime = this.nitroMax;
-        this.nitroReady = false;
-        this.nitroCooldownTimer = this.nitroMax + 2.0; // cooldown
-      }
-    }
-
-    // nitro active countdown
+    // Nitro countdown
     if (this.nitroTime > 0) {
       this.nitroTime -= 0.016 * dt;
       this.nitroActive = true;
     } else {
       this.nitroActive = false;
+      if (this.nitroCooldown > 0) this.nitroCooldown -= 0.016 * dt;
+      if (this.nitroCooldown < 0) this.nitroCooldown = 0;
     }
 
-    // cooldown
-    if (!this.nitroReady) {
-      this.nitroCooldownTimer -= 0.016 * dt;
-      if (this.nitroCooldownTimer <= 0) {
-        this.nitroReady = true;
-        this.nitroCooldownTimer = 0;
-      }
+    // Acceleration / braking
+    if (throttle > 0.01) {
+      this.speed += this.acc * throttle * dt;
+    } else if (brake) {
+      // stronger deceleration on brake
+      this.speed -= this.acc * 1.6 * dt;
+    } else {
+      // natural friction when neither accelerating nor braking
+      this.speed *= this.friction;
     }
 
-    // apply max speed (depending on nitro)
-    const currentMax = this.maxSpeed * (this.nitroActive ? (this.nitroSpeed/this.maxSpeed) : 1);
-    if (this.speed > currentMax) this.speed = currentMax;
+    // Apply nitro effect to max allowed speed (not additive to speed)
+    const speedLimit = this.nitroActive ? this.maxSpeed * this.nitroBoost : this.maxSpeed;
+    if (this.speed > speedLimit) this.speed = speedLimit;
+    if (this.speed < this.reverseMax) this.speed = this.reverseMax;
 
-    // move
-    this.x += Math.cos(this.angle) * this.speed * dt;
-    this.y += Math.sin(this.angle) * this.speed * dt;
+    // Steering with drifting behavior
+    let turnAmount = steer * this.turnBase;
+    if (Math.abs(this.speed) > 5) turnAmount *= this.driftMultiplier;
+    this.angle += turnAmount * dt;
 
-    // spawn smoke when drifting
-    if (Math.abs(steer) > 0.2 && this.speed > 5) this.createSmoke();
+    // Movement: forward relative to angle. Side slip gives drifting feel visually.
+    const forwardX = Math.cos(this.angle) * this.speed * dt;
+    const forwardY = Math.sin(this.angle) * this.speed * dt;
+    const slipX = Math.cos(this.angle + Math.PI / 2) * (this.speed * (1 - this.sideSlip) * 0.5);
+    const slipY = Math.sin(this.angle + Math.PI / 2) * (this.speed * (1 - this.sideSlip) * 0.5);
 
-    // update smoke
-    this.updateSmoke();
+    // Combine forward and small lateral slip based on steering
+    this.x += forwardX + slipX * steer;
+    this.y += forwardY + slipY * steer;
+
+    // Spawn smoke when drifting
+    if (Math.abs(steer) > 0.2 && Math.abs(this.speed) > 4) this._spawnSmoke();
+
+    // Update smoke particles
+    this._updateSmoke();
 
     // damage cooldown tick
     if (this.damageCooldown > 0) this.damageCooldown--;
 
-    // keep width/height for collisions
+    // keep sizes defined for collision checks
     this.width = this.width || 70;
     this.height = this.height || 130;
   }
 
-  // smoke helpers
-  createSmoke() {
+  // --- Smoke particle helpers ---
+  _spawnSmoke() {
     this.smokeParticles.push({
-      x: this.x - Math.cos(this.angle) * 20 + (Math.random()-0.5)*8,
-      y: this.y - Math.sin(this.angle) * 20 + (Math.random()-0.5)*8,
-      size: 10 + Math.random()*10,
-      alpha: 1
+      x: this.x - Math.cos(this.angle) * 18 + (Math.random() - 0.5) * 8,
+      y: this.y - Math.sin(this.angle) * 18 + (Math.random() - 0.5) * 8,
+      size: 6 + Math.random() * 8,
+      alpha: 1,
+      life: 40 + Math.random() * 20
     });
-    if (this.smokeParticles.length > 60) this.smokeParticles.shift();
+    if (this.smokeParticles.length > this.maxSmoke) this.smokeParticles.shift();
   }
 
-  updateSmoke() {
-    for (const p of this.smokeParticles) {
-      p.size += 0.4;
+  _updateSmoke() {
+    for (let p of this.smokeParticles) {
+      p.size += 0.3;
       p.alpha -= 0.02;
+      p.life -= 1;
     }
-    this.smokeParticles = this.smokeParticles.filter(p => p.alpha > 0);
+    this.smokeParticles = this.smokeParticles.filter(p => p.alpha > 0 && p.life > 0);
   }
 
+  // --- Draw helpers ---
+  // camera: object with x,y positions (top-left of viewport in world coords)
   drawSmoke(ctx, camera) {
-    for (const p of this.smokeParticles) {
+    for (let p of this.smokeParticles) {
       ctx.save();
-      ctx.globalAlpha = p.alpha * 0.9;
-      ctx.fillStyle = "#bbbbbb";
+      ctx.globalAlpha = Math.max(0, p.alpha * 0.9);
       ctx.beginPath();
-      ctx.arc(p.x - camera.x + window.innerWidth/2, p.y - camera.y + window.innerHeight/2, p.size, 0, Math.PI*2);
+      const sx = p.x - (camera?.x ?? 0) + window.innerWidth / 2;
+      const sy = p.y - (camera?.y ?? 0) + window.innerHeight / 2;
+      ctx.fillStyle = "#bfbfbf";
+      ctx.arc(sx, sy, p.size, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
   }
 
   draw(ctx, camera) {
-    // draw smoke first
+    // draw smoke behind the car (so smoke appears under car)
     this.drawSmoke(ctx, camera);
 
     ctx.save();
-    const sx = this.x - camera.x + window.innerWidth/2;
-    const sy = this.y - camera.y + window.innerHeight/2;
+
+    // convert world -> screen using camera
+    const sx = this.x - (camera?.x ?? 0) + window.innerWidth / 2;
+    const sy = this.y - (camera?.y ?? 0) + window.innerHeight / 2;
+
     ctx.translate(sx, sy);
     ctx.rotate(this.angle);
 
+    // draw car sprite or fallback rectangle
     if (this.sprite && this.sprite.complete) {
-      ctx.drawImage(this.sprite, -this.width/2, -this.height/2, this.width, this.height);
+      ctx.drawImage(this.sprite, -this.width / 2, -this.height / 2, this.width, this.height);
     } else {
-      ctx.fillStyle = "#00ffd5";
-      ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+      // body
+      ctx.fillStyle = "#00aaff";
+      ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+      // windshield
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.fillRect(-this.width / 8, -this.height / 2 + 8, this.width / 4, this.height / 4);
     }
 
-    // simple windshield
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
-    ctx.fillRect(-this.width/8, -this.height/2 + 8, this.width/4, this.height/4);
+    // nitro flame (rear)
+    if (this.nitroActive) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,160,0,0.95)";
+      // flicker flame shape
+      ctx.beginPath();
+      ctx.moveTo( -8, this.height / 2 );
+      ctx.quadraticCurveTo( 0, this.height / 2 + 20 + Math.random()*8, 8, this.height / 2 );
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
 
     ctx.restore();
   }
 }
+
