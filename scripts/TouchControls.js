@@ -1,64 +1,109 @@
+// ===========================================
+//        TOUCH CONTROLS (JOYSTICK + NITRO)
+//      Works with lane-based Racer.js
+// ===========================================
+
 export default class TouchControls {
+
     constructor() {
         this.left = false;
         this.right = false;
-        this.forward = false;
+        this.down = false;
+        this.nitro = false;
 
-        this.joystick = null;
-        this.thumb = null;
+        // Create UI only on mobile
+        this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        this.nitroButton = document.querySelector(".nitro-button");
-
-        this.initJoystick();
-        this.initNitro();
+        if (this.isMobile) {
+            this.createJoystick();
+            this.createNitroButton();
+        }
     }
 
-    initJoystick() {
-        this.joystick = document.querySelector(".touch-joystick");
-        this.thumb = document.querySelector(".touch-joystick-thumb");
+    // ----------------------------------------------------
+    //                JOYSTICK (LEFT / RIGHT)
+    // ----------------------------------------------------
+    createJoystick() {
+        this.joy = document.createElement("div");
+        this.joy.className = "touch-joystick";
 
-        let dragging = false;
+        this.thumb = document.createElement("div");
+        this.thumb.className = "touch-joystick-thumb";
 
-        this.joystick.addEventListener("touchstart", e => {
-            dragging = true;
+        this.joy.appendChild(this.thumb);
+        document.body.appendChild(this.joy);
+
+        let startX = 0;
+
+        this.joy.addEventListener("touchstart", e => {
+            startX = e.touches[0].clientX;
         });
 
-        this.joystick.addEventListener("touchmove", e => {
-            if (!dragging) return;
+        this.joy.addEventListener("touchmove", e => {
+            const x = e.touches[0].clientX;
+            const diff = x - startX;
 
-            let rect = this.joystick.getBoundingClientRect();
-            let touch = e.touches[0];
+            // Move thumb visually
+            this.thumb.style.transform = `translateX(${diff * 0.3}px)`;
 
-            let x = touch.clientX - (rect.left + rect.width / 2);
-            let y = touch.clientY - (rect.top + rect.height / 2);
-
-            let maxDist = 40;
-            let dist = Math.sqrt(x * x + y * y);
-
-            if (dist > maxDist) {
-                x = (x / dist) * maxDist;
-                y = (y / dist) * maxDist;
+            // Control lane movement
+            if (diff > 30) {
+                this.right = true;
+                this.left = false;
+            } else if (diff < -30) {
+                this.left = true;
+                this.right = false;
+            } else {
+                this.left = false;
+                this.right = false;
             }
-
-            this.thumb.style.transform = `translate(${x}px, ${y}px)`;
-
-            this.left = x < -10;
-            this.right = x > 10;
-            this.forward = true;
         });
 
-        this.joystick.addEventListener("touchend", () => {
-            dragging = false;
-            this.thumb.style.transform = "translate(0px, 0px)";
-            this.left = this.right = this.forward = false;
+        this.joy.addEventListener("touchend", () => {
+            this.left = false;
+            this.right = false;
+            this.thumb.style.transform = "translateX(0px)";
         });
     }
 
-    initNitro() {
-        this.nitroButton.addEventListener("touchstart", () => {
-            if (this.onNitroPressed) this.onNitroPressed();
+    // ----------------------------------------------------
+    //                    NITRO BUTTON
+    // ----------------------------------------------------
+    createNitroButton() {
+        this.nitroBtn = document.createElement("div");
+        this.nitroBtn.className = "nitro-button";
+
+        const icon = document.createElement("img");
+        icon.src = "assets/ui/nitro.png";
+        this.nitroBtn.appendChild(icon);
+
+        document.body.appendChild(this.nitroBtn);
+
+        this.nitroBtn.addEventListener("touchstart", () => {
+            this.nitro = true;
+        });
+
+        this.nitroBtn.addEventListener("touchend", () => {
+            this.nitro = false;
+        });
+    }
+
+    // ----------------------------------------------------
+    //         DESKTOP KEYBOARD FALLBACK (OPTIONAL)
+    // ----------------------------------------------------
+    enableKeyboard() {
+        window.addEventListener("keydown", e => {
+            if (e.key === "ArrowLeft") this.left = true;
+            if (e.key === "ArrowRight") this.right = true;
+            if (e.key === "ArrowDown") this.down = true;
+            if (e.key === "Shift") this.nitro = true;
+        });
+
+        window.addEventListener("keyup", e => {
+            if (e.key === "ArrowLeft") this.left = false;
+            if (e.key === "ArrowRight") this.right = false;
+            if (e.key === "ArrowDown") this.down = false;
+            if (e.key === "Shift") this.nitro = false;
         });
     }
 }
-
-
