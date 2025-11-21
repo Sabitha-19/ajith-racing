@@ -1,153 +1,116 @@
-import Racer from "./scripts/Racer.js";
-import Track from "./scripts/Track.js";
-import Camera from "./scripts/Camera.js";
-import TouchControls from "./scripts/TouchControls.js";
-import Puzzle from "./scripts/puzzle.js";
-import EnemyRacer from "./scripts/EnemyRacer.js";
-import PowerUp from "./scripts/PowerUp.js";
+// -------------------------------
+// MAIN GAME CONTROLLER
+// -------------------------------
 
-const canvas = document.createElement("canvas");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+// Global state
+let gameState = {
+    puzzleSolved: false,
+    countrySelected: false,
+    selectedCountry: null,
+    debug: false,   // turn to true for debug UI
+};
 
-document.getElementById("game-container").appendChild(canvas);
-const ctx = canvas.getContext("2d");
+// DOM elements
+const puzzleContainer = document.getElementById("puzzle-container");
+const menuContainer = document.getElementById("menu-container");
+const gameContainer = document.getElementById("game-container");
 
-// GLOBAL OBJECTS
-let racer, track, camera, controls;
-let enemies = [];
-let powerUps = [];
+// -------------------------------
+// 1️⃣ SHOW PUZZLE FIRST
+// -------------------------------
+function startPuzzle() {
+    const puzzle = new Puzzle(puzzleContainer);
 
-let gameStarted = false;
-let countrySelected = false;
+    puzzle.onSolved(() => {
+        console.log("Puzzle solved!");
 
-// =========================
-// START GAME AFTER COUNTRY
-// =========================
-function startGame() {
-    racer = new Racer();
-    track = new Track();
-    controls = new TouchControls();
-    camera = new Camera(racer);
+        gameState.puzzleSolved = true;
+        puzzleContainer.style.display = "none";
 
-    controls.onNitroPressed = () => racer.activateNitro();
-
-    enemies = [];
-    powerUps = [];
-
-    // Spawn 3 enemies
-    for (let i = 0; i < 3; i++) {
-        enemies.push(
-            new EnemyRacer(
-                new Image(),
-                racer.x + Math.random() * 600 - 300,
-                racer.y + 800 + i * 300
-            )
-        );
-    }
-
-    // Spawn some power-ups
-    loadPowerUps();
-
-    requestAnimationFrame(gameLoop);
+        showCountryMenu();
+    });
 }
 
-// =============================
-// LOAD POWER UPS ON THE TRACK
-// =============================
-function loadPowerUps() {
-    const coinImg = new Image();
-    coinImg.src = "./assets/coin.png";
+startPuzzle();
 
-    const nitroImg = new Image();
-    nitroImg.src = "./assets/nitro.png";
-
-    const healthImg = new Image();
-    healthImg.src = "./assets/health.png";
-
-    for (let i = 0; i < 5; i++) {
-        powerUps.push(
-            new PowerUp(
-                coinImg,
-                racer.x + Math.random() * 600 - 300,
-                racer.y - i * 600 - 400,
-                "coin"
-            )
-        );
-        powerUps.push(
-            new PowerUp(
-                nitroImg,
-                racer.x + Math.random() * 600 - 300,
-                racer.y - i * 900 - 800,
-                "nitro"
-            )
-        );
-        powerUps.push(
-            new PowerUp(
-                healthImg,
-                racer.x + Math.random() * 600 - 300,
-                racer.y - i * 1200 - 1000,
-                "health"
-            )
-        );
-    }
-}
-
-// =========================
-// SHOW COUNTRY MENU
-// =========================
+// -------------------------------
+// 2️⃣ COUNTRY MENU
+// -------------------------------
 function showCountryMenu() {
-    const menu = document.getElementById("countryMenu");
-    menu.style.display = "block";
+    menuContainer.innerHTML = `
+        <div class="country-menu">
+            <h2>Select Your Country</h2>
+            <button class="country-btn" data-country="India">India</button>
+            <button class="country-btn" data-country="USA">USA</button>
+            <button class="country-btn" data-country="Japan">Japan</button>
+        </div>
+    `;
 
-    const buttons = menu.querySelectorAll("button");
+    menuContainer.style.display = "block";
 
-    buttons.forEach(btn => {
-        btn.onclick = () => {
-            menu.style.display = "none";
-            startGame();
-        };
+    document.querySelectorAll(".country-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const country = btn.getAttribute("data-country");
+
+            console.log("Country Selected:", country);
+
+            gameState.countrySelected = true;
+            gameState.selectedCountry = country;
+
+            menuContainer.style.display = "none";
+
+            startRaceGame(country);
+        });
     });
 }
 
-// =========================
-// GAME LOOP
-// =========================
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// -------------------------------
+// 3️⃣ START THE RACING GAME
+// -------------------------------
+function startRaceGame(country) {
+    console.log("Starting game for:", country);
 
-    racer.update(controls);
-    camera.update();
-    track.draw(ctx, camera);
+    const canvas = document.createElement("canvas");
+    canvas.width = 900;
+    canvas.height = 500;
+    gameContainer.appendChild(canvas);
 
-    powerUps.forEach(p => {
-        p.update();
-        p.draw(ctx, camera);
+    const ctx = canvas.getContext("2d");
 
-        if (racer.checkPowerUpCollision(p)) {
-            p.collected = true;
-        }
-    });
+    const track = new Track(canvas.width, canvas.height);
+    const racer = new Racer(track.startX, track.startY);
+    const camera = new Camera(racer, canvas.width, canvas.height);
 
-    powerUps = powerUps.filter(p => !p.collected);
+    const controls = new TouchControls();
+    controls.attach();
 
-    enemies.forEach(e => {
-        e.update(racer);
-        e.draw(ctx, camera);
-    });
+    // DEBUG UI
+    if (gameState.debug) {
+        const debugBox = document.createElement("div");
+        debugBox.className = "debug-box";
+        gameContainer.appendChild(debugBox);
 
-    racer.draw(ctx, camera);
+        setInterval(() => {
+            debugBox.innerHTML = `
+                Speed: ${racer.speed.toFixed(2)}<br>
+                X: ${racer.x.toFixed(1)}<br>
+                Y: ${racer.y.toFixed(1)}<br>
+            `;
+        }, 100);
+    }
 
-    requestAnimationFrame(gameLoop);
+    // GAME LOOP
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        racer.update(controls);
+        camera.update();
+
+        track.draw(ctx, camera);
+        racer.draw(ctx, camera);
+
+        requestAnimationFrame(loop);
+    }
+
+    loop();
 }
-
-// ===============================================
-// GAME START FLOW: PUZZLE → COUNTRY → RACE
-// ===============================================
-new Puzzle(() => {
-    document.getElementById("puzzle-screen").style.display = "none";
-
-    // Show country menu
-    const menu = document.getElementById("countryMenu");
-    menu.style.display = "block";
-});
