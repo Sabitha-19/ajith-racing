@@ -1,164 +1,96 @@
+// TouchControls.js
 export default class TouchControls {
-    constructor() {
-        this.input = {
-            x: 0,      // left/right   (-1 to +1)
-            y: 0,      // forward      (0 to +1)
-            nitro: false
-        };
+    constructor(player) {
+        this.player = player;
 
-        this.joystick = null;
-        this.joystickTouchId = null;
+        this.leftPressed = false;
+        this.rightPressed = false;
+        this.acceleratePressed = false;
+        this.brakePressed = false;
 
-        this.nitroPressed = false;
-
-        // Create UI buttons
-        this.createUI();
-
-        // Touch events
-        this.addTouchEvents();
-
-        // Keyboard fallback
-        this.addKeyboardEvents();
+        this.createButtons();
+        this.addEvents();
     }
 
-    // =========================================
-    // CREATE UI (JOYSTICK + NITRO BUTTON)
-    // =========================================
-    createUI() {
-        // Joystick base
-        this.base = document.createElement("div");
-        this.base.style.position = "fixed";
-        this.base.style.left = "80px";
-        this.base.style.bottom = "120px";
-        this.base.style.width = "180px";
-        this.base.style.height = "180px";
-        this.base.style.background = "rgba(255,255,255,0.08)";
-        this.base.style.borderRadius = "50%";
-        this.base.style.backdropFilter = "blur(3px)";
-        this.base.style.zIndex = "10";
-        document.body.appendChild(this.base);
+    createButtons() {
+        this.container = document.createElement("div");
+        this.container.id = "touch-controls";
+        this.container.style.position = "absolute";
+        this.container.style.bottom = "20px";
+        this.container.style.left = "0";
+        this.container.style.width = "100%";
+        this.container.style.display = "flex";
+        this.container.style.justifyContent = "space-between";
+        this.container.style.padding = "0 20px";
+        this.container.style.zIndex = "10";
+        document.body.appendChild(this.container);
 
-        // Joystick stick
-        this.stick = document.createElement("div");
-        this.stick.style.position = "absolute";
-        this.stick.style.left = "60px";
-        this.stick.style.top = "60px";
-        this.stick.style.width = "60px";
-        this.stick.style.height = "60px";
-        this.stick.style.background = "rgba(255,255,255,0.4)";
-        this.stick.style.borderRadius = "50%";
-        this.stick.style.transition = "0.05s";
-        this.base.appendChild(this.stick);
+        // Left button
+        this.leftBtn = this.makeButton("⟵");
+        this.container.appendChild(this.leftBtn);
 
-        // Nitro button
-        this.nitroBtn = document.createElement("img");
-        this.nitroBtn.src = "assets/nitro.png";
-        this.nitroBtn.style.position = "fixed";
-        this.nitroBtn.style.right = "50px";
-        this.nitroBtn.style.bottom = "120px";
-        this.nitroBtn.style.width = "140px";
-        this.nitroBtn.style.opacity = "0.8";
-        this.nitroBtn.style.zIndex = "10";
-        this.nitroBtn.style.userSelect = "none";
-        this.nitroBtn.style.touchAction = "none";
-        document.body.appendChild(this.nitroBtn);
+        // Right button
+        this.rightBtn = this.makeButton("⟶");
+        this.container.appendChild(this.rightBtn);
 
-        this.nitroBtn.addEventListener("touchstart", () => this.nitroPressed = true);
-        this.nitroBtn.addEventListener("touchend", () => this.nitroPressed = false);
-        this.nitroBtn.addEventListener("mousedown", () => this.nitroPressed = true);
-        this.nitroBtn.addEventListener("mouseup", () => this.nitroPressed = false);
+        // Accelerate button
+        this.accelerateBtn = this.makeButton("▲");
+        this.accelerateBtn.style.position = "absolute";
+        this.accelerateBtn.style.right = "30px";
+        this.accelerateBtn.style.bottom = "90px";
+        document.body.appendChild(this.accelerateBtn);
+
+        // Brake button
+        this.brakeBtn = this.makeButton("▼");
+        this.brakeBtn.style.position = "absolute";
+        this.brakeBtn.style.right = "30px";
+        this.brakeBtn.style.bottom = "20px";
+        document.body.appendChild(this.brakeBtn);
     }
 
-    // =========================================
-    // TOUCH INPUT FOR JOYSTICK
-    // =========================================
-    addTouchEvents() {
-        window.addEventListener("touchstart", (e) => this.onTouchStart(e));
-        window.addEventListener("touchmove", (e) => this.onTouchMove(e));
-        window.addEventListener("touchend", (e) => this.onTouchEnd(e));
+    makeButton(label) {
+        const btn = document.createElement("div");
+        btn.innerText = label;
+        btn.style.width = "70px";
+        btn.style.height = "70px";
+        btn.style.background = "rgba(255,255,255,0.25)";
+        btn.style.border = "2px solid #fff";
+        btn.style.borderRadius = "50%";
+        btn.style.display = "flex";
+        btn.style.alignItems = "center";
+        btn.style.justifyContent = "center";
+        btn.style.fontSize = "35px";
+        btn.style.color = "#fff";
+        btn.style.fontWeight = "bold";
+        btn.style.userSelect = "none";
+        btn.style.touchAction = "none";
+        return btn;
     }
 
-    onTouchStart(e) {
-        for (let t of e.changedTouches) {
-            const rect = this.base.getBoundingClientRect();
-            if (
-                t.clientX > rect.left &&
-                t.clientX < rect.right &&
-                t.clientY > rect.top &&
-                t.clientY < rect.bottom
-            ) {
-                this.joystickTouchId = t.identifier;
-            }
-        }
+    addEvents() {
+        this.bindPress(this.leftBtn, "leftPressed");
+        this.bindPress(this.rightBtn, "rightPressed");
+        this.bindPress(this.accelerateBtn, "acceleratePressed");
+        this.bindPress(this.brakeBtn, "brakePressed");
     }
 
-    onTouchMove(e) {
-        if (this.joystickTouchId === null) return;
-
-        for (let t of e.changedTouches) {
-            if (t.identifier === this.joystickTouchId) {
-                const rect = this.base.getBoundingClientRect();
-                const dx = t.clientX - (rect.left + rect.width / 2);
-                const dy = t.clientY - (rect.top + rect.height / 2);
-
-                const maxDist = 70;
-                const dist = Math.min(maxDist, Math.hypot(dx, dy));
-
-                const angle = Math.atan2(dy, dx);
-
-                const x = Math.cos(angle) * dist;
-                const y = Math.sin(angle) * dist;
-
-                // Move joystick stick
-                this.stick.style.left = `${60 + x}px`;
-                this.stick.style.top = `${60 + y}px`;
-
-                // Normalized input (-1 to +1)
-                this.input.x = x / maxDist;
-                this.input.y = -y / maxDist;
-
-                break;
-            }
-        }
-    }
-
-    onTouchEnd(e) {
-        for (let t of e.changedTouches) {
-            if (t.identifier === this.joystickTouchId) {
-                // Reset joystick
-                this.joystickTouchId = null;
-                this.input.x = 0;
-                this.input.y = 0;
-
-                this.stick.style.left = "60px";
-                this.stick.style.top = "60px";
-            }
-        }
-    }
-
-    // =========================================
-    // KEYBOARD FALLBACK (PC)
-    // =========================================
-    addKeyboardEvents() {
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowLeft" || e.key === "a") this.input.x = -1;
-            if (e.key === "ArrowRight" || e.key === "d") this.input.x = 1;
-            if (e.key === "ArrowUp" || e.key === "w") this.input.y = 1;
-            if (e.key === "Shift") this.nitroPressed = true;
+    bindPress(btn, stateName) {
+        btn.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            this[stateName] = true;
         });
 
-        window.addEventListener("keyup", (e) => {
-            if (e.key === "ArrowLeft" || e.key === "a") this.input.x = 0;
-            if (e.key === "ArrowRight" || e.key === "d") this.input.x = 0;
-            if (e.key === "ArrowUp" || e.key === "w") this.input.y = 0;
-            if (e.key === "Shift") this.nitroPressed = false;
+        btn.addEventListener("touchend", (e) => {
+            e.preventDefault();
+            this[stateName] = false;
         });
     }
 
-    // =========================================
-    // RETURN FINAL INPUT STRUCT
-    // =========================================
-    getInput() {
-        return {
-            x: this.input.x,
-            y: this.input.y,
+    update() {
+        if (this.leftPressed) this.player.turnLeft();
+        if (this.rightPressed) this.player.turnRight();
+        if (this.acceleratePressed) this.player.accelerate();
+        if (this.brakePressed) this.player.brake();
+    }
+}
+
