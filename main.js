@@ -1,88 +1,82 @@
-import Puzzle from "./scripts/Puzzle.js";
-import PuzzleGame from "./scripts/PuzzleGame.js"; // your actual racing game manager
+import Racer from "./Racer.js";
+import Track from "./Track.js";
+import Camera from "./Camera.js";
+import TouchControls from "./TouchControls.js";
+import Puzzle from "./Puzzle.js";
 
-// UI elements
-const puzzleScreen = document.getElementById("puzzle-screen");
-const countryMenu = document.getElementById("country-menu");
-const gameContainer = document.getElementById("game-container");
-const countryButtons = document.querySelectorAll("#country-menu button");
+const canvas = document.createElement("canvas");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+document.getElementById("game-container").appendChild(canvas);
 
-// Canvas for racing game
-const gameCanvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-// -------------------------------------------------------
-// 1. START PUZZLE
-// -------------------------------------------------------
-let puzzle;
+let racer, track, camera, controls;
 
-function startPuzzle() {
-    puzzle = new Puzzle("puzzleCanvas", () => {
-        // Puzzle completed callback
-        console.log("Puzzle solved! Showing country menu...");
-        puzzleScreen.style.display = "none";
-        showCountryMenu();
-    });
+function startGame() {
+    racer = new Racer();
+    track = new Track();
+    controls = new TouchControls();
+    camera = new Camera(racer);
+
+    controls.onNitroPressed = () => racer.activateNitro();
+
+    requestAnimationFrame(gameLoop);
 }
 
-startPuzzle();
-
-// -------------------------------------------------------
-// 2. COUNTRY MENU
-// -------------------------------------------------------
-function showCountryMenu() {
-    countryMenu.style.display = "block";
-}
-
-countryButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-        const country = btn.dataset.country;
-
-        console.log("Country selected →", country);
-
-        countryMenu.style.display = "none";
-        startRace(country);
-    });
+new Puzzle(() => {
+    // Puzzle completed → show country selection
+    showCountryMenu();
 });
 
-// -------------------------------------------------------
-// 3. START RACING GAME
-// -------------------------------------------------------
-let racingGame;
+function showCountryMenu() {
+    const menu = document.createElement("div");
+    menu.style.position = "absolute";
+    menu.style.left = "50%";
+    menu.style.top = "50%";
+    menu.style.transform = "translate(-50%, -50%)";
+    menu.style.background = "white";
+    menu.style.padding = "20px";
+    menu.style.borderRadius = "10px";
 
-function startRace(country) {
-    console.log("Starting race in:", country);
+    menu.innerHTML = `
+        <h2>Select Country</h2>
+        <button id="ind">India</button>
+        <button id="usa">USA</button>
+        <button id="jpn">Japan</button>
+    `;
 
-    // Show game
-    gameContainer.style.display = "block";
+    document.body.appendChild(menu);
 
-    // Run game manager
-    racingGame = new PuzzleGame(gameCanvas);
-
-    // Optional: country-based themes
-    applyCountryTheme(country);
+    menu.querySelector("#ind").onclick = () => {
+        menu.remove();
+        startGame();
+    };
+    menu.querySelector("#usa").onclick = () => {
+        menu.remove();
+        startGame();
+    };
+    menu.querySelector("#jpn").onclick = () => {
+        menu.remove();
+        startGame();
+    };
 }
 
-// -------------------------------------------------------
-// 4. OPTIONAL: COUNTRY THEMES
-// -------------------------------------------------------
-function applyCountryTheme(country) {
-    document.body.style.transition = "0.5s";
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const themes = {
-        india: "#ff9933",
-        japan: "#d90000",
-        usa: "#1434A4",
-        france: "#001f3f",
-        italy: "#009246",
-        germany: "#000000",
-        brazil: "#009C3B",
-        australia: "#002868",
-        uae: "#00732F",
-        china: "#CC0000",
-        canada: "#D80427",
-        uk: "#00247D",
-        southafrica: "#007A4D"
-    };
+    racer.update(controls);
+    camera.update();
+    track.draw(ctx, camera);
 
-    document.body.style.background = themes[country] || "#000";
+    // Draw player as rectangle
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+        canvas.width / 2 - 10,
+        canvas.height - 80,
+        20,
+        40
+    );
+
+    requestAnimationFrame(gameLoop);
 }
