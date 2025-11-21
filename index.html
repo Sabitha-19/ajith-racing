@@ -9,69 +9,56 @@
 
 <body>
 
-    <!-- 🎮 GAME CANVAS -->
-    <div id="game-container" style="display:none;">
-        <canvas></canvas>
+    <!-- 🔄 LOADING SCREEN -->
+    <div id="loading-screen">
+        <h1>Loading...</h1>
     </div>
 
     <!-- 🍬 PUZZLE SCREEN -->
-    <div id="puzzle-screen" style="
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: #111;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 50;
-        color: white;
-        text-align: center;
-    ">
-        <h1>Match 3 Puzzle Before Race</h1>
-        <canvas id="puzzleCanvas" width="400" height="400" style="background:#222; border:2px solid #fff;"></canvas>
-        <p>Match 3 candies to start racing!</p>
+    <div id="puzzle-screen">
+        <h1>Match 3 Puzzle</h1>
+        <canvas id="puzzleCanvas" width="400" height="400"></canvas>
+        <p>Match 3 candies to unlock racing!</p>
     </div>
 
-    <!-- 🌍 COUNTRY MENU (HIDDEN AT START) -->
-    <div id="countryMenu" style="
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        background: rgba(0,0,0,0.6);
-        padding: 20px;
-        border-radius: 10px;
-        color: white;
-        z-index: 10;
-        display:none;
-    ">
+    <!-- 🌍 COUNTRY MENU -->
+    <div id="country-menu">
         <h2>Select Country</h2>
-        <button onclick="chooseCountry('india')">India</button>
-        <button onclick="chooseCountry('japan')">Japan</button>
-        <button onclick="chooseCountry('usa')">USA</button>
-        <button onclick="chooseCountry('france')">France</button>
-        <button onclick="chooseCountry('italy')">Italy</button>
-        <button onclick="chooseCountry('germany')">Germany</button>
-        <button onclick="chooseCountry('brazil')">Brazil</button>
-        <button onclick="chooseCountry('australia')">Australia</button>
-        <button onclick="chooseCountry('uae')">UAE / Dubai</button>
-        <button onclick="chooseCountry('china')">China</button>
-        <button onclick="chooseCountry('canada')">Canada</button>
-        <button onclick="chooseCountry('uk')">UK</button>
-        <button onclick="chooseCountry('southafrica')">South Africa</button>
+        <div class="country-grid">
+            <button data-country="india">India</button>
+            <button data-country="japan">Japan</button>
+            <button data-country="usa">USA</button>
+            <button data-country="france">France</button>
+            <button data-country="italy">Italy</button>
+            <button data-country="germany">Germany</button>
+            <button data-country="brazil">Brazil</button>
+            <button data-country="australia">Australia</button>
+            <button data-country="uae">UAE</button>
+            <button data-country="china">China</button>
+            <button data-country="canada">Canada</button>
+            <button data-country="uk">UK</button>
+            <button data-country="southafrica">South Africa</button>
+        </div>
     </div>
 
-    <!-- 📌 SCRIPTS -->
-    <script src="scripts/puzzle.js" type="module"></script>
+    <!-- 🎮 GAME CONTAINER -->
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
-    <script src="scripts/TouchControls.js" type="module"></script>
-    <script src="scripts/Racer.js" type="module"></script>
-    <script src="scripts/Track.js" type="module"></script>
-    <script src="scripts/Camera.js" type="module"></script>
-    <script src="scripts/EnemyRacer.js" type="module"></script>
-    <script src="main.js" type="module"></script>
+    <!-- 📌 MODULE SCRIPTS -->
+    <script type="module" src="scripts/Racer.js"></script>
+    <script type="module" src="scripts/EnemyRacer.js"></script>
+    <script type="module" src="scripts/Camera.js"></script>
+    <script type="module" src="scripts/TouchControls.js"></script>
+    <script type="module" src="scripts/Track.js"></script>
+    <script type="module" src="scripts/PowerUp.js"></script>
+    <script type="module" src="scripts/DebugUI.js"></script>
+
+    <!-- PUZZLE + GAME MANAGER -->
+    <script type="module" src="scripts/Puzzle.js"></script>
+    <script type="module" src="scripts/GameManager.js"></script>
 
 </body>
 </html>
+
