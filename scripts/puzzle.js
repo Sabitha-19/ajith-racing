@@ -1,108 +1,191 @@
-// =========================
-//      PUZZLE / GAME LOGIC
-// =========================
+import Racer from "./Racer.js";
+import EnemyRacer from "./EnemyRacer.js";
+import Camera from "./Camera.js";
+import TouchControls from "./TouchControls.js";
+import Track from "./Track.js";
+import PowerUp from "./PowerUp.js";
 
-export default class Puzzle {
-    constructor(racer, track, enemies, ui) {
-        this.racer = racer;
-        this.track = track;
-        this.enemies = enemies;       // array of enemy cars
-        this.ui = ui;                 // UI elements
-        this.timer = 0;
-        this.lap = 1;
-        this.totalLaps = 3;
+export default class PuzzleGame {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext("2d");
 
-        this.countdown = 3;
-        this.started = false;
-        this.finished = false;
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
 
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+
+        // TRACK
+        this.track = new Track(this.width, this.height);
+
+        // PLAYER CAR
+        const playerSprite = new Image();
+        playerSprite.src = "./assets/player.png";
+
+        this.player = new Racer(playerSprite, this.width / 2, this.height / 2);
+
+        // CAMERA
+        this.camera = new Camera(this.player.x, this.player.y);
+
+        // TOUCH CONTROLS
+        this.controls = new TouchControls();
+
+        // ENEMIES
+        this.enemies = [];
+
+        // POWER UPS
+        this.powerUps = [];
+
+        // Debug UI
+        this.createDebugUI();
+
+        // Load images for power-ups
+        this.coinImg = new Image();
+        this.coinImg.src = "./assets/powerups/coin.png";
+
+        this.nitroImg = new Image();
+        this.nitroImg.src = "./assets/powerups/nitro.png";
+
+        this.healthImg = new Image();
+        this.healthImg.src = "./assets/powerups/health.png";
+
+        // Game Loop Start
         this.lastTime = 0;
-
-        this.startCountdown();
+        requestAnimationFrame(this.gameLoop.bind(this));
     }
 
-    startCountdown() {
-        this.ui.showCountdown("3");
+    // -------------------------------------------------------------
+    // DEBUG UI
+    // -------------------------------------------------------------
+    createDebugUI() {
+        const panel = document.createElement("div");
+        panel.style.position = "absolute";
+        panel.style.top = "10px";
+        panel.style.left = "10px";
+        panel.style.padding = "10px";
+        panel.style.background = "rgba(0,0,0,0.5)";
+        panel.style.color = "#fff";
+        panel.style.borderRadius = "10px";
+        panel.style.fontFamily = "Arial";
+        panel.style.zIndex = "10";
 
-        let tick = setInterval(() => {
-            this.countdown--;
+        const spawnBtn = document.createElement("button");
+        spawnBtn.innerText = "Spawn Enemy";
+        spawnBtn.style.marginRight = "10px";
+        spawnBtn.onclick = () => this.spawnEnemy();
 
-            if (this.countdown > 0) {
-                this.ui.showCountdown(this.countdown.toString());
-            } else if (this.countdown === 0) {
-                this.ui.showCountdown("GO!");
-                this.started = true;
-                this.ui.hideCountdownDelayed();
-            } else {
-                clearInterval(tick);
-            }
-        }, 1000);
+        const resetBtn = document.createElement("button");
+        resetBtn.innerText = "Reset Race";
+        resetBtn.onclick = () => this.resetRace();
+
+        panel.appendChild(spawnBtn);
+        panel.appendChild(resetBtn);
+
+        document.body.appendChild(panel);
     }
 
-    update(delta) {
-        if (this.finished) return;
+    // -------------------------------------------------------------
+    // GAME ACTIONS
+    // -------------------------------------------------------------
+    spawnEnemy() {
+        const sprite = new Image();
+        sprite.src = "./assets/enemy.png";
 
-        if (this.started) {
-            this.timer += delta;
-            this.updateTimerUI();
+        const ex = this.player.x + (Math.random() * 800 - 400);
+        const ey = this.player.y - (Math.random() * 600 + 300);
 
-            this.checkLapProgress();
-            this.checkEnemyCollisions();
-        }
+        this.enemies.push(new EnemyRacer(sprite, ex, ey));
     }
 
-    updateTimerUI() {
-        let seconds = Math.floor(this.timer);
-        let ms = Math.floor((this.timer % 1) * 1000);
-        this.ui.time.innerText = `${seconds}.${ms}`;
-    }
+    spawnPowerUp(type) {
+        let img;
 
-    checkLapProgress() {
-        if (this.racer.position > this.track.length - 20) {
-            this.lap++;
-            if (this.lap > this.totalLaps) {
-                this.finishRace();
-            } else {
-                this.ui.updateLap(this.lap, this.totalLaps);
-            }
-        }
-    }
+        if (type === "coin") img = this.coinImg;
+        if (type === "nitro") img = this.nitroImg;
+        if (type === "health") img = this.healthImg;
 
-    checkEnemyCollisions() {
-        for (let enemy of this.enemies) {
-            let dx = this.racer.x - enemy.x;
-            let dz = this.racer.position - enemy.position;
+        const x = this.player.x + (Math.random() * 600 - 300);
+        const y = this.player.y - (Math.random() * 800 + 200);
 
-            if (Math.abs(dx) < 0.4 && Math.abs(dz) < 1.5) {
-                // send crash event to racer (handles flash + slowdown)
-                this.racer.onCrash();
-            }
-        }
-    }
-
-    finishRace() {
-        this.finished = true;
-        this.started = false;
-        this.ui.showWinScreen(this.timer);
+        this.powerUps.push(new PowerUp(img, x, y, type));
     }
 
     resetRace() {
-        this.timer = 0;
-        this.lap = 1;
-        this.started = false;
-        this.finished = false;
-        this.countdown = 3;
-
-        this.racer.reset();
-        this.track.reset();
-        this.ui.updateLap(1, this.totalLaps);
-
-        this.startCountdown();
+        this.enemies = [];
+        this.powerUps = [];
+        this.player.x = this.width / 2;
+        this.player.y = this.height / 2;
+        this.player.speed = 0;
+        this.camera.x = this.player.x;
+        this.camera.y = this.player.y;
     }
 
-    spawnEnemy() {
-        this.enemies.push(
-            this.track.spawnEnemyCar(this.racer.position + 20)
-        );
+    // -------------------------------------------------------------
+    // GAME LOOP
+    // -------------------------------------------------------------
+    gameLoop(timeStamp) {
+        const delta = (timeStamp - this.lastTime) / 1000;
+        this.lastTime = timeStamp;
+
+        this.update(delta);
+        this.draw();
+
+        requestAnimationFrame(this.gameLoop.bind(this));
+    }
+
+    update(delta) {
+        this.track.update(delta);
+
+        this.player.update(this.controls, this.track);
+        this.camera.follow(this.player);
+
+        // Update enemies
+        this.enemies.forEach(e => e.update(this.player));
+
+        // Update powerups
+        this.powerUps.forEach(p => p.update());
+
+        // PowerUp collision check
+        this.checkPowerUpCollection();
+    }
+
+    // -------------------------------------------------------------
+    // COLLISION WITH POWER UPS
+    // -------------------------------------------------------------
+    checkPowerUpCollection() {
+        this.powerUps = this.powerUps.filter(p => {
+            const dx = p.x - this.player.x;
+            const dy = p.y - this.player.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 70) {
+                if (p.type === "coin") this.player.score += 1;
+                if (p.type === "nitro") this.player.speed += 3;
+                if (p.type === "health") this.player.health = Math.min(100, this.player.health + 20);
+
+                return false; // remove collected powerup
+            }
+            return true;
+        });
+    }
+
+    // -------------------------------------------------------------
+    // DRAW EVERYTHING
+    // -------------------------------------------------------------
+    draw() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+
+        // Track
+        this.track.draw(this.ctx);
+
+        // Powerups
+        this.powerUps.forEach(p => p.draw(this.ctx, this.camera));
+
+        // Enemies
+        this.enemies.forEach(e => e.draw(this.ctx, this.camera));
+
+        // Player
+        this.player.draw(this.ctx, this.camera);
     }
 }
