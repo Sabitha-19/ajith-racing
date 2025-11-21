@@ -146,3 +146,4 @@ export default class Racer {
         ctx.restore();
     }
 }
+
