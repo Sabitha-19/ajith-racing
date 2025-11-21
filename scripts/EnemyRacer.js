@@ -1,107 +1,43 @@
-// ==========================
-//      ENEMY RACER AI
-// ==========================
-
 export default class EnemyRacer {
-    constructor(sprite, lane = 0, startPosition = 0) {
+    constructor(x, y, color = "red") {
+        this.x = x;
+        this.y = y;
+        this.speed = 6; // slower than player
+        this.width = 40;
+        this.height = 70;
+        this.color = color;
 
-        // Position on track
-        this.lane = lane;              // -1 = left, 0 = center, 1 = right
-        this.position = startPosition; // forward distance on track
-
-        // Screen rendering offsets
-        this.x = 0;
-        this.y = 0;
-
-        // Movement
-        this.speed = 20 + Math.random() * 4;
-        this.maxSpeed = 28 + Math.random() * 6;
-
-        this.targetLane = lane;
-        this.laneSmooth = 0.12;
-
-        // Sprite
-        this.sprite = sprite;
-        this.width = 70;
-        this.height = 130;
-
-        // AI wobble
-        this.wobbleTime = Math.random() * 10;
+        // AI behavior
+        this.steerTimer = 0;
+        this.steerDirection = 0;
     }
 
-    setLane(laneIndex) {
-        this.targetLane = laneIndex;
+    update(track) {
+        // Move forward along the track
+        this.y -= this.speed;
+
+        // AI random steering
+        this.steerTimer--;
+        if (this.steerTimer <= 0) {
+            this.steerTimer = 60 + Math.random() * 120;
+            this.steerDirection = (Math.random() - 0.5) * 6; // small left-right drift
+        }
+
+        this.x += this.steerDirection;
+
+        // Stay inside road boundaries
+        const roadLeft = track.roadX - track.roadWidth / 2 + 40;
+        const roadRight = track.roadX + track.roadWidth / 2 - 40;
+
+        if (this.x < roadLeft) this.x = roadLeft;
+        if (this.x > roadRight) this.x = roadRight;
     }
 
-    update(player, track, delta) {
+    draw(ctx, camera) {
+        const screenX = this.x - camera.x + ctx.canvas.width / 2;
+        const screenY = this.y - camera.y + ctx.canvas.height / 2;
 
-        // -----------------------------
-        //   AI Forward Speed Control
-        // -----------------------------
-        if (this.speed < this.maxSpeed) {
-            this.speed += 0.05;
-        }
-
-        // Move forward
-        this.position += this.speed * delta;
-
-        // -----------------------------
-        //       AI Lane Steering
-        // -----------------------------
-        // Slight wobble to make AI look alive
-        this.wobbleTime += delta * 2;
-        const wobble = Math.sin(this.wobbleTime) * 0.15;
-
-        // AI tries to stay near player but not directly copy them
-        const distanceToPlayer = player.position - this.position;
-
-        // If AI is too far behind → increase speed slightly
-        if (distanceToPlayer > 300) {
-            this.maxSpeed += 0.05;
-        }
-
-        // Small chance to switch lanes for variety
-        if (Math.random() < 0.002) {
-            this.targetLane = [-1, 0, 1][Math.floor(Math.random() * 3)];
-        }
-
-        // Smoothly move lane toward target
-        this.lane += (this.targetLane - this.lane) * this.laneSmooth;
-
-        // Apply wobble
-        this.lane += wobble * 0.05;
-
-        // -----------------------------
-        //   Convert track lane → X,Y
-        // -----------------------------
-        const screen = track.project(this.position, this.lane);
-
-        this.x = screen.x;
-        this.y = screen.y;
-        this.scale = screen.scale;
-    }
-
-    draw(ctx) {
-        if (!this.scale) return; // Not on screen yet
-
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.scale, this.scale);
-
-        if (this.sprite.complete) {
-            ctx.drawImage(
-                this.sprite,
-                -this.width / 2,
-                -this.height / 2,
-                this.width,
-                this.height
-            );
-        } else {
-            // fallback placeholder
-            ctx.fillStyle = "yellow";
-            ctx.fillRect(-25, -50, 50, 100);
-        }
-
-        ctx.restore();
+        ctx.fillStyle = this.color;
+        ctx.fillRect(screenX - this.width / 2, screenY - this.height / 2, this.width, this.height);
     }
 }
