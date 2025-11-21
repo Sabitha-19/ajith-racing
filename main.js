@@ -1,116 +1,179 @@
-// -------------------------------
-// MAIN GAME CONTROLLER
-// -------------------------------
+// ===================================================
+//                    MAIN GAME LOOP
+// ===================================================
 
-// Global state
-let gameState = {
-    puzzleSolved: false,
-    countrySelected: false,
-    selectedCountry: null,
-    debug: false,   // turn to true for debug UI
+import Track from "./Track.js";
+import Racer from "./Racer.js";
+import EnemyRacer from "./EnemyRacer.js";
+import PowerUp from "./PowerUp.js";
+import Camera from "./Camera.js";
+import TouchControls from "./TouchControls.js";
+import Puzzle from "./puzzle.js";
+import UIManager from "./UIManager.js";   // must exist
+
+// ---------------------------------------------------
+//                    GAME SETUP
+// ---------------------------------------------------
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let lastTime = 0;
+
+// SYSTEMS
+const ui = new UIManager();
+const track = new Track(canvas);
+const camera = new Camera();
+const player = new Racer();
+const controls = new TouchControls(canvas, player);
+
+// ENEMIES
+let enemies = [];
+
+// POWER UPS
+let powerUps = [];
+
+// PUZZLE (must be before race)
+const puzzle = new Puzzle(ui);
+
+// ---------------------------------------------------
+//               COUNTRY MENU CALLBACK
+// ---------------------------------------------------
+
+ui.onCountrySelected = (countryName) => {
+    console.log("Country chosen:", countryName);
+
+    startRace(countryName);
 };
 
-// DOM elements
-const puzzleContainer = document.getElementById("puzzle-container");
-const menuContainer = document.getElementById("menu-container");
-const gameContainer = document.getElementById("game-container");
+// ---------------------------------------------------
+//                  START RACE LOGIC
+// ---------------------------------------------------
 
-// -------------------------------
-// 1️⃣ SHOW PUZZLE FIRST
-// -------------------------------
-function startPuzzle() {
-    const puzzle = new Puzzle(puzzleContainer);
+function startRace(country) {
 
-    puzzle.onSolved(() => {
-        console.log("Puzzle solved!");
+    // load specific country data
+    track.setEnvironment(country);
 
-        gameState.puzzleSolved = true;
-        puzzleContainer.style.display = "none";
+    // Create enemy racers
+    enemies = [
+        new EnemyRacer("red", 0.8),
+        new EnemyRacer("blue", 0.6),
+        new EnemyRacer("yellow", 0.7),
+    ];
 
-        showCountryMenu();
-    });
+    // Load power-ups
+    loadPowerUps();
+
+    ui.hideEverything();
 }
 
-startPuzzle();
+// ---------------------------------------------------
+//                SPAWN POWER UPS
+// ---------------------------------------------------
 
-// -------------------------------
-// 2️⃣ COUNTRY MENU
-// -------------------------------
-function showCountryMenu() {
-    menuContainer.innerHTML = `
-        <div class="country-menu">
-            <h2>Select Your Country</h2>
-            <button class="country-btn" data-country="India">India</button>
-            <button class="country-btn" data-country="USA">USA</button>
-            <button class="country-btn" data-country="Japan">Japan</button>
-        </div>
-    `;
+function loadPowerUps() {
+    const coin = new Image();
+    coin.src = "assets/coin.png";
 
-    menuContainer.style.display = "block";
-
-    document.querySelectorAll(".country-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const country = btn.getAttribute("data-country");
-
-            console.log("Country Selected:", country);
-
-            gameState.countrySelected = true;
-            gameState.selectedCountry = country;
-
-            menuContainer.style.display = "none";
-
-            startRaceGame(country);
-        });
-    });
-}
-
-// -------------------------------
-// 3️⃣ START THE RACING GAME
-// -------------------------------
-function startRaceGame(country) {
-    console.log("Starting game for:", country);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = 900;
-    canvas.height = 500;
-    gameContainer.appendChild(canvas);
-
-    const ctx = canvas.getContext("2d");
-
-    const track = new Track(canvas.width, canvas.height);
-    const racer = new Racer(track.startX, track.startY);
-    const camera = new Camera(racer, canvas.width, canvas.height);
-
-    const controls = new TouchControls();
-    controls.attach();
-
-    // DEBUG UI
-    if (gameState.debug) {
-        const debugBox = document.createElement("div");
-        debugBox.className = "debug-box";
-        gameContainer.appendChild(debugBox);
-
-        setInterval(() => {
-            debugBox.innerHTML = `
-                Speed: ${racer.speed.toFixed(2)}<br>
-                X: ${racer.x.toFixed(1)}<br>
-                Y: ${racer.y.toFixed(1)}<br>
-            `;
-        }, 100);
+    for (let i = 200; i < 3000; i += 400) {
+        powerUps.push(new PowerUp(coin, Math.floor(Math.random() * 3) - 1, i, "coin"));
     }
+}
 
-    // GAME LOOP
-    function loop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+// ---------------------------------------------------
+//                 INPUT FOR PUZZLE
+// ---------------------------------------------------
 
-        racer.update(controls);
-        camera.update();
+canvas.addEventListener("mousedown", (e) => {
+    puzzle.onDown(e.clientX, e.clientY);
+});
+canvas.addEventListener("mousemove", (e) => {
+    puzzle.onMove(e.clientX, e.clientY);
+});
+canvas.addEventListener("mouseup", (e) => {
+    puzzle.onUp(e.clientX, e.clientY);
+});
 
-        track.draw(ctx, camera);
-        racer.draw(ctx, camera);
+canvas.addEventListener("touchstart", (e) => {
+    const t = e.touches[0];
+    puzzle.onDown(t.clientX, t.clientY);
+});
+canvas.addEventListener("touchmove", (e) => {
+    const t = e.touches[0];
+    puzzle.onMove(t.clientX, t.clientY);
+});
+canvas.addEventListener("touchend", () => {
+    puzzle.onUp(player.x, player.y);
+});
 
+// ---------------------------------------------------
+//                      GAME LOOP
+// ---------------------------------------------------
+
+function loop(timestamp) {
+    const delta = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ---------------------------
+    //       1. PUZZLE FIRST
+    // ---------------------------
+    if (puzzle.active) {
+        puzzle.draw(ctx);
         requestAnimationFrame(loop);
+        return;
     }
 
-    loop();
+    // ---------------------------
+    //   2. COUNTRY MENU PHASE
+    // ---------------------------
+    if (ui.countryMenuVisible) {
+        ui.drawCountryMenu(ctx);
+        requestAnimationFrame(loop);
+        return;
+    }
+
+    // ---------------------------
+    //          3. RACING
+    // ---------------------------
+
+    track.update(camera, player);
+
+    // Player
+    player.update(delta, track);
+
+    // Enemies
+    enemies.forEach(enemy => {
+        enemy.update(delta, track);
+    });
+
+    // PowerUps
+    powerUps.forEach(p => {
+        p.update(delta, track);
+
+        if (p.checkCollision(player)) {
+            ui.showPickupEffect(p.type);
+        }
+    });
+
+    // DRAW ORDER
+    track.drawRoad(ctx);
+
+    enemies.forEach(enemy => enemy.draw(ctx));
+    player.draw(ctx);
+    powerUps.forEach(p => p.draw(ctx));
+
+    track.drawEnvironment(ctx);
+
+    ui.drawHUD(ctx);
+
+    requestAnimationFrame(loop);
 }
+
+requestAnimationFrame(loop);
+
