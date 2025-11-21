@@ -1,83 +1,34 @@
-import Racer from "./Racer.js";
-import Track from "./Track.js";
-import Camera from "./Camera.js";
-import TouchControls from "./TouchControls.js";
-import Puzzle from "./Puzzle.js";
+export default class Puzzle {
+    constructor(onComplete) {
+        this.onComplete = onComplete;
 
-const canvas = document.createElement("canvas");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-document.getElementById("game-container").appendChild(canvas);
+        this.element = document.createElement("div");
+        this.element.style.position = "absolute";
+        this.element.style.left = "50%";
+        this.element.style.top = "50%";
+        this.element.style.transform = "translate(-50%, -50%)";
+        this.element.style.padding = "20px";
+        this.element.style.background = "white";
+        this.element.style.borderRadius = "10px";
+        this.element.innerHTML = `
+            <h2>Solve to Start</h2>
+            <p>5 + 7 = ?</p>
+            <input id="pAnswer" style="width:100%;padding:10px;font-size:20px;">
+            <button id="pCheck" style="margin-top:10px;padding:10px;width:100%;">Submit</button>
+        `;
 
-const ctx = canvas.getContext("2d");
+        document.body.appendChild(this.element);
 
-let racer, track, camera, controls;
+        document.getElementById("pCheck").onclick = () => {
+            const ans = document.getElementById("pAnswer").value;
+            if (ans == 12) {
+                this.finish();
+            }
+        };
+    }
 
-function startGame() {
-    racer = new Racer();
-    track = new Track();
-    controls = new TouchControls();
-    camera = new Camera(racer);
-
-    controls.onNitroPressed = () => racer.activateNitro();
-
-    requestAnimationFrame(gameLoop);
+    finish() {
+        this.element.remove();
+        this.onComplete();
+    }
 }
-
-new Puzzle(() => {
-    // Puzzle completed → show country selection
-    showCountryMenu();
-});
-
-function showCountryMenu() {
-    const menu = document.createElement("div");
-    menu.style.position = "absolute";
-    menu.style.left = "50%";
-    menu.style.top = "50%";
-    menu.style.transform = "translate(-50%, -50%)";
-    menu.style.background = "white";
-    menu.style.padding = "20px";
-    menu.style.borderRadius = "10px";
-
-    menu.innerHTML = `
-        <h2>Select Country</h2>
-        <button id="ind">India</button>
-        <button id="usa">USA</button>
-        <button id="jpn">Japan</button>
-    `;
-
-    document.body.appendChild(menu);
-
-    menu.querySelector("#ind").onclick = () => {
-        menu.remove();
-        startGame();
-    };
-    menu.querySelector("#usa").onclick = () => {
-        menu.remove();
-        startGame();
-    };
-    menu.querySelector("#jpn").onclick = () => {
-        menu.remove();
-        startGame();
-    };
-}
-
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    racer.update(controls);
-    camera.update();
-    track.draw(ctx, camera);
-
-    // Draw player as rectangle
-    ctx.fillStyle = "red";
-    ctx.fillRect(
-        canvas.width / 2 - 10,
-        canvas.height - 80,
-        20,
-        40
-    );
-
-    requestAnimationFrame(gameLoop);
-}
-
