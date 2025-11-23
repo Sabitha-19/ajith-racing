@@ -1,118 +1,114 @@
-// scripts/main.js
-import Puzzle from "./puzzle.js";
-import RacerGame from "./RacerGame.js";
-import UIManager from "./UIManager.js";
+// main.js
+import RacerGame from "./scripts/RacerGame.js";
+import Track from "./scripts/Track.js";
+import Racer from "./scripts/Racer.js";
+import Enemy from "./scripts/Enemy.js";
+import PowerUp from "./scripts/PowerUp.js";
+import Camera from "./scripts/Camera.js";
+import CollisionManager from "./scripts/CollisionManager.js";
+import TouchControls from "./scripts/TouchControls.js";
+import UIManager from "./scripts/UIManager.js";
+import Puzzle from "./scripts/puzzle.js";
 
-// Global assets container (sprites)
-window.__assets = {};
+// ----------------------------
+// Initialize Canvas and UI
+// ----------------------------
+const gameContainer = document.getElementById("game-container");
 
-// Preload images used in racing
-const preloadImages = (paths) => {
-    const promises = [];
-    paths.forEach(p => {
-        const img = new Image();
-        img.src = p.src;
-        window.__assets[p.name] = img;
-        promises.push(new Promise(res => img.onload = res));
+// Create main canvas
+const canvas = document.createElement("canvas");
+canvas.id = "game-canvas";
+canvas.width = 960;
+canvas.height = 540;
+gameContainer.appendChild(canvas);
+
+// Initialize UI Manager
+const uiManager = new UIManager(gameContainer);
+
+// ----------------------------
+// Show Puzzle first
+// ----------------------------
+const puzzle = new Puzzle({
+    canvas: canvas,
+    rows: 7,
+    cols: 7,
+    tileSize: 64,
+    timeLimitSec: 45,
+    progressTarget: 6
+}, () => {
+    // When puzzle is complete, start the racing game
+    startRacingGame();
+});
+
+// ----------------------------
+// Racing Game Setup
+// ----------------------------
+let racingGame;
+
+function startRacingGame() {
+    // Clear canvas or reset for racing
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Initialize track
+    const track = new Track(canvas.width, canvas.height);
+
+    // Initialize player racer
+    const player = new Racer({
+        x: canvas.width / 2,
+        y: canvas.height - 100,
+        speed: 0,
+        maxSpeed: 8
     });
-    return Promise.all(promises);
-};
 
-const racingAssets = [
-    { src: "assets/car.png", name: "car" },
-    { src: "assets/enemy.png", name: "enemy" },
-    { src: "assets/road.png", name: "road" },
-    { src: "assets/start.png", name: "start" },
-    { src: "assets/finish.png", name: "finish" },
-    { src: "assets/flame.png", name: "flame" },
-    { src: "assets/health.png", name: "health" },
-    { src: "assets/nitro.png", name: "nitro" }
-];
+    // Initialize enemies
+    const enemies = [];
+    for (let i = 0; i < 5; i++) {
+        enemies.push(new Enemy({ x: Math.random() * canvas.width, y: -Math.random() * 600 }));
+    }
 
-// ---------------------------
-// Step 1: Start Puzzle
-// ---------------------------
-const startPuzzle = async () => {
-    // Create puzzle canvas and element
-    const puzzleCanvas = document.createElement("canvas");
-    document.body.appendChild(puzzleCanvas);
+    // Initialize power-ups
+    const powerUps = [];
+    for (let i = 0; i < 3; i++) {
+        powerUps.push(new PowerUp({ x: Math.random() * canvas.width, y: -Math.random() * 600 }));
+    }
 
-    const puzzle = new Puzzle(
-        {
-            canvas: puzzleCanvas,
-            rows: 7,
-            cols: 7,
-            tileSize: 64,
-            timeLimitSec: 45,
-            progressTarget: 6,
-        },
-        () => {
-            // Puzzle complete → move to country menu
-            puzzle.destroy();
-            showCountryMenu();
-        }
-    );
-};
+    // Initialize camera
+    const camera = new Camera(player, canvas);
 
-// ---------------------------
-// Step 2: Show Country Menu
-// ---------------------------
-const showCountryMenu = () => {
-    const countryUI = document.createElement("div");
-    countryUI.id = "country-ui";
-    countryUI.innerHTML = `<h2>Select Your Country</h2>`;
-    document.body.appendChild(countryUI);
+    // Collision manager
+    const collisionManager = new CollisionManager(player, enemies, powerUps);
 
-    fetch("data/countries.json")
-        .then(res => res.json())
-        .then(countries => {
-            countries.slice(0, 6).forEach(c => {
-                const btn = document.createElement("button");
-                btn.innerText = c.name;
-                btn.onclick = () => {
-                    countryUI.remove();
-                    startRace(c);
-                };
-                countryUI.appendChild(btn);
-            });
-        });
-};
+    // Touch controls
+    const touchControls = new TouchControls(player);
 
-// ---------------------------
-// Step 3: Start 2D Racing Game
-// ---------------------------
-const startRace = async (country) => {
-    await preloadImages(racingAssets);
-
-    // Create canvas for racing
-    const gameContainer = document.getElementById("game-container") || document.createElement("div");
-    gameContainer.id = "game-container";
-    document.body.appendChild(gameContainer);
-    gameContainer.innerHTML = ""; // clear anything inside
-
-    const canvas = document.createElement("canvas");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    gameContainer.appendChild(canvas);
-
-    // Initialize UIManager
-    const uiManager = new UIManager({ container: gameContainer });
-
-    // Initialize racing engine
-    const game = new RacerGame({
+    // Initialize racing game engine
+    racingGame = new RacerGame({
         canvas,
-        uiManager,
-        country,
-        assets: window.__assets
+        player,
+        track,
+        enemies,
+        powerUps,
+        camera,
+        collisionManager,
+        uiManager
     });
 
-    game.start();
-};
+    // Start game loop
+    racingGame.start();
+}
 
-// ---------------------------
-// Step 4: Launch everything
-// ---------------------------
-window.onload = () => {
-    startPuzzle();
-};
-
+// ----------------------------
+// UI Buttons Example (optional)
+// ----------------------------
+uiManager.createButton("Restart Puzzle", () => {
+    puzzle.destroy();
+    new Puzzle({
+        canvas: canvas,
+        rows: 7,
+        cols: 7,
+        tileSize: 64,
+        timeLimitSec: 45,
+        progressTarget: 6
+    }, () => startRacingGame());
+});
