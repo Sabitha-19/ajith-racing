@@ -1,145 +1,137 @@
 // scripts/Racer.js
-// ---------------------------------------------
-// Main Player Racer (2D Engine)
-// ---------------------------------------------
-
 export default class Racer {
-    constructor(options = {}) {
-
-        this.track = options.track;
-        this.sprite = options.sprite;
-
-        // world coordinates
-        this.lane = 0;              // -1 = left, 0 = center, +1 = right
-        this.position = 0;          // forward distance on track
-
-        // movement
+    constructor(sprite = null) {
+        this.sprite = sprite;
+        this.position = 0;
+        this.lane = 0;
+        this.targetLane = 0;
         this.speed = 0;
-        this.accel = 480;
-        this.maxSpeed = 650;
-        this.turnSpeed = 3.2;
-        this.nitroBoost = 0;
+        this.accel = 6.0;
+        this.maxSpeed = 18.0;
+        this.brakePower = 18.0;
+        this.friction = 0.98;
 
-        // render
-        this.width = 150;
-        this.height = 300;
-        this.x = 0;
-        this.y = 0;
-        this.scale = 1;
-
-        // collisions
-        this.hitRadius = 65;
-
-        // nitro system
-        this.nitro = 0;        // nitro meter (0–100)
         this.nitroActive = false;
+        this.nitroTime = 0;
+        this.nitroDuration = 2.0;
+        this.nitroMultiplier = 1.6;
 
-        // drifting effect
-        this.drift = 0;
+        this.lean = 0;
+        this.width = 110;
+        this.height = 200;
+        this.health = 100;
+        this.crashFlash = 0;
+        this.coins = 0;
     }
 
-    addNitro(amount) {
-        this.nitro = Math.min(100, this.nitro + amount);
+    moveLeft() {
+        if (this.targetLane > -1) this.targetLane -= 1;
     }
 
-    heal(amount) {
-        // if you later add HP system, apply here
+    moveRight() {
+        if (this.targetLane < 1) this.targetLane += 1;
     }
 
-    update(input, delta) {
-        // ---------------------------------------------------
-        // Forward movement
-        // ---------------------------------------------------
-        if (input.forward) {
-            this.speed += this.accel * delta;
-        } else {
-            this.speed -= this.accel * 0.8 * delta;
-        }
-
-        this.speed = Math.max(0, Math.min(this.speed, this.maxSpeed + this.nitroBoost));
-
-        this.position += this.speed * delta;
-
-        // ---------------------------------------------------
-        // Nitro boost
-        // ---------------------------------------------------
-        if (input.nitro && this.nitro > 0) {
+    activateNitro() {
+        if (!this.nitroActive && this.nitroTime <= 0) {
             this.nitroActive = true;
-            this.nitroBoost = 350;
-            this.nitro -= 35 * delta; // fuel burns
-        } else {
-            this.nitroActive = false;
-            this.nitroBoost = 0;
+            this.nitroTime = this.nitroDuration;
         }
-
-        if (this.nitro <= 0) {
-            this.nitroActive = false;
-            this.nitroBoost = 0;
-        }
-
-        // ---------------------------------------------------
-        // Lane changing (smooth)
-        // ---------------------------------------------------
-        let targetLane = this.lane;
-
-        if (input.left) targetLane = -1;
-        if (input.right) targetLane = 1;
-        if (!input.left && !input.right) targetLane = 0;
-
-        // Smooth slide
-        this.lane += (targetLane - this.lane) * delta * this.turnSpeed;
-
-        // drifting visual
-        this.drift = (targetLane !== 0) ? (targetLane * 0.5) : 0;
-
-        // ---------------------------------------------------
-        // Project to screen
-        // ---------------------------------------------------
-        const screen = this.track.project(this.position, this.lane);
-        this.x = screen.x;
-        this.y = screen.y;
-        this.scale = screen.scale;
     }
 
-    draw(ctx) {
-        if (!this.scale) return;
-
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.scale, this.scale);
-
-        // tilt during drifting
-        ctx.rotate(this.drift * 0.2);
-
-        if (this.sprite && this.sprite.complete) {
-            ctx.drawImage(
-                this.sprite,
-                -this.width / 2,
-                -this.height,
-                this.width,
-                this.height
-            );
-        } else {
-            // fallback draw
-            ctx.fillStyle = "red";
-            ctx.fillRect(-40, -100, 80, 180);
+    applyPowerUp(type) {
+        if (!type) return;
+        if (type === "coin") this.coins = (this.coins || 0) + 1;
+        else if (type === "nitro") {
+            this.nitroTime = Math.max(this.nitroTime, this.nitroDuration);
+            this.nitroActive = true;
         }
-
-        ctx.restore();
-
-        // optional: nitro flame behind car
-        if (this.nitroActive) this.drawNitro(ctx);
+        else if (type === "health") this.health = Math.min(100, (this.health || 100) + 20);
     }
 
-    drawNitro(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y + 40);
-        ctx.scale(this.scale, this.scale);
+    crash() {
+        this.speed = Math.max(0, this.speed * 0.35);
+        this.crashFlash = 1.0;
+    }
 
-        ctx.fillStyle = "rgba(0,150,255,0.6)";
-        ctx.beginPath();
-        ctx.ellipse(0, 60, 20, 60, 0, 0, Math.PI * 2);
-        ctx.fill();
+    update(delta = 1 / 60, controls = {}) {
+        if (controls.left) {
+            this.moveLeft();
+            this.lean = Math.max(this.lean - 0.08, -1.6);
+        } else if (controls.right) {
+            this.moveRight();
+            this.lean = Math.min(this.lean + 0.08, 1.6);
+        } else this.lean *= 0.92;
+
+        if (controls.nitro || this.nitroActive) {
+            if (!this.nitroActive && controls.nitro) this.activateNitro();
+        }
+
+        this.speed += this.accel * delta;
+        if (controls.down) this.speed -= this.brakePower * delta;
+        this.speed *= Math.pow(this.friction, delta * 60);
+
+        if (this.nitroActive && this.nitroTime > 0) {
+            this.nitroTime -= delta;
+            const targetMax = this.maxSpeed * this.nitroMultiplier;
+            if (this.speed < targetMax) this.speed = Math.min(targetMax, this.speed + this.accel * 2 * delta);
+        } else {
+            this.nitroActive = false;
+            if (this.nitroTime <= 0) this.nitroTime = 0;
+        }
+
+        const effectiveMax = this.nitroActive ? this.maxSpeed * this.nitroMultiplier : this.maxSpeed;
+        if (this.speed > effectiveMax) this.speed = effectiveMax;
+        if (this.speed < 0) this.speed = 0;
+
+        const laneLerpSpeed = 6.0 * delta;
+        this.lane += (this.targetLane - this.lane) * Math.min(1, laneLerpSpeed);
+
+        this.position += this.speed * delta * 60;
+
+        if (this.crashFlash > 0) this.crashFlash = Math.max(0, this.crashFlash - delta * 1.5);
+    }
+
+    draw(ctx, camera, track) {
+        if (!track) return;
+        const screen = track.project(this.position, this.lane);
+        if (!screen) return;
+
+        const { x, y, scale } = screen;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.rotate(this.lean * 0.06);
+
+        const drawW = this.width;
+        const drawH = this.height;
+
+        if (this.sprite && this.sprite.complete) ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+        else {
+            ctx.fillStyle = "#00ffd5";
+            ctx.fillRect(-drawW / 2, -drawH / 2, drawW, drawH);
+        }
+
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
+        ctx.fillRect(-drawW * 0.12, -drawH * 0.45, drawW * 0.24, drawH * 0.18);
+
+        if (this.nitroActive) {
+            ctx.save();
+            ctx.translate(0, drawH * 0.5);
+            if (typeof window !== "undefined" && window.__assets && window.__assets.flame) {
+                const flameImg = window.__assets.flame;
+                if (flameImg.complete) {
+                    ctx.globalAlpha = 0.9;
+                    ctx.drawImage(flameImg, -drawW * 0.24, 0, drawW * 0.48, drawH * 0.6);
+                }
+            } else {
+                ctx.fillStyle = "rgba(255,120,0,0.9)";
+                ctx.beginPath();
+                ctx.ellipse(0, 8, drawW * 0.18, drawH * 0.12, 0, 0, Math.PI);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
 
         ctx.restore();
     }
