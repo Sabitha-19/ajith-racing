@@ -1,79 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ajith Kumar Racing</title>
-    <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ajith Kumar Racing</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
 
-    <!-- GAME CANVAS (HIDDEN UNTIL PUZZLE COMPLETES) -->
-    <div id="game-container" style="display:none;">
-        <canvas></canvas>
+  <!-- ============================ -->
+  <!--        PUZZLE ROOT           -->
+  <!-- ============================ -->
+  <div id="puzzle-root"
+       style="position:fixed; top:0; left:0; right:0; bottom:0;
+              display:flex; align-items:center; justify-content:center; 
+              z-index:100;">
+  </div>
+
+  <!-- ============================ -->
+  <!--       COUNTRY MENU           -->
+  <!-- ============================ -->
+  <div id="countryMenu"
+       style="position:fixed; left:20px; top:20px; display:none; z-index:90;">
+       
+    <h3 style="color:white; margin:0 0 10px 0;">Select Country</h3>
+
+    <div class="country-grid">
+      <button class="country-btn" data-country="india">India</button>
+      <button class="country-btn" data-country="japan">Japan</button>
+      <button class="country-btn" data-country="usa">USA</button>
+      <button class="country-btn" data-country="france">France</button>
+      <button class="country-btn" data-country="italy">Italy</button>
+      <button class="country-btn" data-country="germany">Germany</button>
+      <button class="country-btn" data-country="brazil">Brazil</button>
+      <button class="country-btn" data-country="australia">Australia</button>
+      <button class="country-btn" data-country="uae">UAE / Dubai</button>
+      <button class="country-btn" data-country="china">China</button>
+      <button class="country-btn" data-country="canada">Canada</button>
+      <button class="country-btn" data-country="uk">United Kingdom</button>
+      <button class="country-btn" data-country="southafrica">South Africa</button>
     </div>
 
-    <!-- PUZZLE SCREEN -->
-    <div id="puzzle-screen" style="
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: #111;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 50;
-        color: white;
-        text-align: center;
-    ">
-        <h1>Match 3 Puzzle Before Race</h1>
-        <canvas id="puzzleCanvas" width="400" height="400" style="background:#222; border:2px solid #fff;"></canvas>
-        <p>Match any 3 candies to start racing!</p>
-    </div>
+  </div>
 
-    <!-- COUNTRY MENU -->
-    <div id="countryMenu" style="
-        position: absolute;
-        top: 20px;
-        left: 20px;
-        background: rgba(0,0,0,0.6);
-        padding: 20px;
-        border-radius: 10px;
-        color: white;
-        z-index: 10;
-        display:none;
-    ">
-        <h2>Select Country</h2>
+  <!-- ============================ -->
+  <!--     GAME CANVAS AREA         -->
+  <!-- ============================ -->
+  <div id="game-container"
+       style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; z-index:10;">
+    <canvas id="gameCanvas"></canvas>
+  </div>
 
-        <button onclick="chooseCountry('india')">India</button>
-        <button onclick="chooseCountry('japan')">Japan</button>
-        <button onclick="chooseCountry('usa')">USA</button>
-        <button onclick="chooseCountry('france')">France</button>
-        <button onclick="chooseCountry('italy')">Italy</button>
-        <button onclick="chooseCountry('germany')">Germany</button>
-        <button onclick="chooseCountry('brazil')">Brazil</button>
-        <button onclick="chooseCountry('australia')">Australia</button>
-        <button onclick="chooseCountry('uae')">UAE / Dubai</button>
-        <button onclick="chooseCountry('china')">China</button>
-        <button onclick="chooseCountry('canada')">Canada</button>
-        <button onclick="chooseCountry('uk')">UK</button>
-        <button onclick="chooseCountry('southafrica')">South Africa</button>
-    </div>
+  <!-- ============================ -->
+  <!--        DEBUG PANEL           -->
+  <!-- ============================ -->
+  <div id="debug-panel" class="debug-panel" style="display:none;">
+    <button id="spawn-enemy">Spawn Enemy</button>
+    <button id="reset-race">Reset Race</button>
+  </div>
 
-    <!-- JS SCRIPTS -->
-    <script src="scripts/puzzle.js" type="module"></script>
-    <script src="scripts/TouchControls.js" type="module"></script>
-    <script src="scripts/Racer.js" type="module"></script>
-    <script src="scripts/Track.js" type="module"></script>
-    <script src="scripts/Camera.js" type="module"></script>
-    <script src="scripts/EnemyRacer.js" type="module"></script>
-    <script src="scripts/PowerUp.js" type="module"></script>
-
-    <script src="main.js" type="module"></script>
+  <!-- ============================ -->
+  <!--        SCRIPT FILES          -->
+  <!-- ============================ -->
+  <script type="module" src="scripts/UIManager.js"></script>
+  <script type="module" src="scripts/puzzle.js"></script>
+  <script type="module" src="main.js"></script>
 
 </body>
 </html>
