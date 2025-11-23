@@ -1,28 +1,19 @@
-export default class Camera {
-    constructor(target, screenWidth, screenHeight) {
-        this.target = target; // Racer object
-        this.screenWidth = screenWidth;
-        this.screenHeight = screenHeight;
+export default class FollowCamera {
+constructor(camera, racer) {
+this.camera = camera;
+this.racer = racer;
+}
 
-        this.x = target.x;
-        this.y = target.y;
 
-        this.smoothness = 0.1; // Camera follow smoothing
-    }
+update() {
+if (!this.racer.mesh) return;
 
-    update() {
-        // Smooth follow (lerp)
-        this.x += (this.target.x - this.x) * this.smoothness;
-        this.y += (this.target.y - this.y) * this.smoothness;
-    }
 
-    // Convert world X → screen X
-    worldToScreenX(worldX) {
-        return worldX - this.x + this.screenWidth / 2;
-    }
-
-    // Convert world Y → screen Y
-    worldToScreenY(worldY) {
-        return worldY - this.y + this.screenHeight / 2;
-    }
+const targetPos = this.racer.mesh.position;
+this.camera.position.lerp(
+new THREE.Vector3(targetPos.x, targetPos.y + 8, targetPos.z + 14),
+0.1
+);
+this.camera.lookAt(targetPos);
+}
 }
