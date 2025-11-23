@@ -1,215 +1,145 @@
 // scripts/Racer.js
-// Lane-based 2D Racer (player)
-// Exposes:
-//  - properties: position, lane, targetLane, speed, width, height
-//  - methods: update(delta, controls), draw(ctx, camera, track), applyPowerUp(type), crash()
-//
-// Designed to work with Track.project(position, lane) => { x, y, scale }
-// and RacerGame.js / TouchControls.js interfaces.
+// ---------------------------------------------
+// Main Player Racer (2D Engine)
+// ---------------------------------------------
 
 export default class Racer {
-    constructor(sprite = null) {
-        // sprite: Image instance (optional)
-        this.sprite = sprite;
+    constructor(options = {}) {
 
-        // track-space
-        this.position = 0;     // forward distance along track
-        this.lane = 0;         // -1 left, 0 center, +1 right
-        this.targetLane = 0;   // for smooth lane switching
+        this.track = options.track;
+        this.sprite = options.sprite;
+
+        // world coordinates
+        this.lane = 0;              // -1 = left, 0 = center, +1 = right
+        this.position = 0;          // forward distance on track
 
         // movement
-        this.speed = 0;        // current forward speed
-        this.accel = 6.0;      // units per second^2 (tune)
-        this.maxSpeed = 18.0;  // base max speed
-        this.brakePower = 18.0;
-        this.friction = 0.98;
+        this.speed = 0;
+        this.accel = 480;
+        this.maxSpeed = 650;
+        this.turnSpeed = 3.2;
+        this.nitroBoost = 0;
 
-        // nitro
+        // render
+        this.width = 150;
+        this.height = 300;
+        this.x = 0;
+        this.y = 0;
+        this.scale = 1;
+
+        // collisions
+        this.hitRadius = 65;
+
+        // nitro system
+        this.nitro = 0;        // nitro meter (0–100)
         this.nitroActive = false;
-        this.nitroTime = 0;
-        this.nitroDuration = 2.0;     // seconds
-        this.nitroMultiplier = 1.6;   // speed multiplier
 
-        // drift / visual lean
-        this.lean = 0;
-
-        // dimensions (world-space sizes used for collision scaling)
-        this.width = 110;
-        this.height = 200;
-
-        // health / damage (optional; not used by basic engine)
-        this.health = 100;
-
-        // crash flash (for screen overlay; main engine reads this.playerCrashFlash)
-        this.crashFlash = 0;
-
-        // coins or score
-        this.coins = 0;
+        // drifting effect
+        this.drift = 0;
     }
 
-    // external calls to move lanes
-    moveLeft() {
-        if (this.targetLane > -1) this.targetLane -= 1;
+    addNitro(amount) {
+        this.nitro = Math.min(100, this.nitro + amount);
     }
 
-    moveRight() {
-        if (this.targetLane < 1) this.targetLane += 1;
+    heal(amount) {
+        // if you later add HP system, apply here
     }
 
-    activateNitro() {
-        if (!this.nitroActive && this.nitroTime <= 0) {
-            this.nitroActive = true;
-            this.nitroTime = this.nitroDuration;
-        }
-    }
-
-    // apply a power-up effect
-    applyPowerUp(type) {
-        if (!type) return;
-        if (type === "coin") {
-            this.coins = (this.coins || 0) + 1;
-        } else if (type === "nitro") {
-            // immediate small boost; also start nitro timer
-            this.nitroTime = Math.max(this.nitroTime, this.nitroDuration);
-            this.nitroActive = true;
-        } else if (type === "health") {
-            this.health = Math.min(100, (this.health || 100) + 20);
-        }
-    }
-
-    // slows down & flash on crash
-    crash() {
-        this.speed = Math.max(0, this.speed * 0.35);
-        this.crashFlash = 1.0;
-    }
-
-    // update each frame: delta in seconds, controls object { left, right, down, nitro }
-    update(delta = 1 / 60, controls = {}) {
-        // -------------------------
-        // input handling
-        // -------------------------
-        if (controls.left) {
-            this.moveLeft();
-            // small immediate lateral lean
-            this.lean = Math.max(this.lean - 0.08, -1.6);
-        } else if (controls.right) {
-            this.moveRight();
-            this.lean = Math.min(this.lean + 0.08, 1.6);
+    update(input, delta) {
+        // ---------------------------------------------------
+        // Forward movement
+        // ---------------------------------------------------
+        if (input.forward) {
+            this.speed += this.accel * delta;
         } else {
-            // relax lean slowly
-            this.lean *= 0.92;
+            this.speed -= this.accel * 0.8 * delta;
         }
 
-        if (controls.nitro || this.nitroActive) {
-            if (!this.nitroActive && controls.nitro) {
-                this.activateNitro();
-            }
-        }
+        this.speed = Math.max(0, Math.min(this.speed, this.maxSpeed + this.nitroBoost));
 
-        // -------------------------
-        // speed & nitro logic
-        // -------------------------
-        // accelerate automatically (arcade feel)
-        this.speed += this.accel * delta;
-        // basic braking input (down)
-        if (controls.down) {
-            this.speed -= this.brakePower * delta;
-        }
+        this.position += this.speed * delta;
 
-        // friction clamp
-        this.speed *= Math.pow(this.friction, delta * 60);
-
-        // nitro effect
-        if (this.nitroActive && this.nitroTime > 0) {
-            this.nitroTime -= delta;
-            // scale speed smoothly
-            const targetMax = this.maxSpeed * this.nitroMultiplier;
-            if (this.speed < targetMax) {
-                this.speed = Math.min(targetMax, this.speed + this.accel * 2 * delta);
-            }
+        // ---------------------------------------------------
+        // Nitro boost
+        // ---------------------------------------------------
+        if (input.nitro && this.nitro > 0) {
+            this.nitroActive = true;
+            this.nitroBoost = 350;
+            this.nitro -= 35 * delta; // fuel burns
         } else {
             this.nitroActive = false;
-            if (this.nitroTime <= 0) this.nitroTime = 0;
+            this.nitroBoost = 0;
         }
 
-        // clamp speed to max (depending on nitro)
-        const effectiveMax = this.nitroActive ? this.maxSpeed * this.nitroMultiplier : this.maxSpeed;
-        if (this.speed > effectiveMax) this.speed = effectiveMax;
-        if (this.speed < 0) this.speed = 0;
-
-        // -------------------------
-        // lane smoothing (interpolate lane -> targetLane)
-        // -------------------------
-        const laneLerpSpeed = 6.0 * delta; // how fast lane position follows targetLane
-        this.lane += (this.targetLane - this.lane) * Math.min(1, laneLerpSpeed);
-
-        // -------------------------
-        // forward movement
-        // -------------------------
-        this.position += this.speed * delta * 60; // multiply to keep units meaningful (tweakable)
-        // NOTE: RacerGame/Track treat position as same units
-
-        // -------------------------
-        // crash flash decay
-        // -------------------------
-        if (this.crashFlash > 0) {
-            this.crashFlash = Math.max(0, this.crashFlash - delta * 1.5);
+        if (this.nitro <= 0) {
+            this.nitroActive = false;
+            this.nitroBoost = 0;
         }
+
+        // ---------------------------------------------------
+        // Lane changing (smooth)
+        // ---------------------------------------------------
+        let targetLane = this.lane;
+
+        if (input.left) targetLane = -1;
+        if (input.right) targetLane = 1;
+        if (!input.left && !input.right) targetLane = 0;
+
+        // Smooth slide
+        this.lane += (targetLane - this.lane) * delta * this.turnSpeed;
+
+        // drifting visual
+        this.drift = (targetLane !== 0) ? (targetLane * 0.5) : 0;
+
+        // ---------------------------------------------------
+        // Project to screen
+        // ---------------------------------------------------
+        const screen = this.track.project(this.position, this.lane);
+        this.x = screen.x;
+        this.y = screen.y;
+        this.scale = screen.scale;
     }
 
-    // Draw the racer at projected screen position
-    // ctx: CanvasRenderingContext2D
-    // camera: object with world->screen helpers or ignored (we use track.project)
-    // track: Track instance with project(position, lane) => { x, y, scale }
-    draw(ctx, camera, track) {
-        if (!track) return;
-
-        const screen = track.project(this.position, this.lane);
-        if (!screen) return;
-
-        const { x, y, scale } = screen;
+    draw(ctx) {
+        if (!this.scale) return;
 
         ctx.save();
-        ctx.translate(x, y);
-        ctx.scale(scale, scale);
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.scale, this.scale);
 
-        // visual lean rotation
-        ctx.rotate(this.lean * 0.06);
-
-        // draw sprite or fallback rect
-        const drawW = this.width;
-        const drawH = this.height;
+        // tilt during drifting
+        ctx.rotate(this.drift * 0.2);
 
         if (this.sprite && this.sprite.complete) {
-            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+            ctx.drawImage(
+                this.sprite,
+                -this.width / 2,
+                -this.height,
+                this.width,
+                this.height
+            );
         } else {
-            ctx.fillStyle = "#00ffd5";
-            ctx.fillRect(-drawW / 2, -drawH / 2, drawW, drawH);
+            // fallback draw
+            ctx.fillStyle = "red";
+            ctx.fillRect(-40, -100, 80, 180);
         }
 
-        // simple windshield
-        ctx.fillStyle = "rgba(255,255,255,0.18)";
-        ctx.fillRect(-drawW * 0.12, -drawH * 0.45, drawW * 0.24, drawH * 0.18);
+        ctx.restore();
 
-        // small nitro flame under car when active
-        if (this.nitroActive) {
-            ctx.save();
-            ctx.translate(0, drawH * 0.5);
-            // flame sprite if provided as global asset (RacerGame draws additional flame effect too)
-            if (typeof window !== "undefined" && window.__assets && window.__assets.flame) {
-                const flameImg = window.__assets.flame;
-                if (flameImg.complete) {
-                    ctx.globalAlpha = 0.9;
-                    ctx.drawImage(flameImg, -drawW * 0.24, 0, drawW * 0.48, drawH * 0.6);
-                }
-            } else {
-                ctx.fillStyle = "rgba(255,120,0,0.9)";
-                ctx.beginPath();
-                ctx.ellipse(0, 8, drawW * 0.18, drawH * 0.12, 0, 0, Math.PI);
-                ctx.fill();
-            }
-            ctx.restore();
-        }
+        // optional: nitro flame behind car
+        if (this.nitroActive) this.drawNitro(ctx);
+    }
+
+    drawNitro(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y + 40);
+        ctx.scale(this.scale, this.scale);
+
+        ctx.fillStyle = "rgba(0,150,255,0.6)";
+        ctx.beginPath();
+        ctx.ellipse(0, 60, 20, 60, 0, 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.restore();
     }
