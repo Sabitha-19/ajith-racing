@@ -1,92 +1,87 @@
 // scripts/PowerUp.js
-// ---------------------------------------------
-// Pure 2D Power-Up Object
-// Works with Track.js projection
-// ---------------------------------------------
+// Lane-based 2D power-up / collectible
+// Works with Track.js and RacerGame.js
 
 export default class PowerUp {
-    constructor(options = {}) {
+    constructor(type = "coin", lane = 0, position = 0, sprite = null) {
+        this.type = type;           // "coin", "nitro", "health"
+        this.lane = lane;           // -1, 0, +1
+        this.position = position;   // forward distance along track
+        this.sprite = sprite;
 
-        this.track = options.track;
-        this.sprite = options.sprite;
+        this.width = 60;
+        this.height = 60;
 
-        // lane-based world position
-        this.lane = options.lane ?? 0;           // -1, 0, +1
-        this.position = options.position ?? 500;  // forward position on road
-
-        // type = "coin" | "nitro" | "health"
-        this.type = options.type ?? "coin";
-
-        // render properties
-        this.width = 90;
-        this.height = 90;
-
-        this.x = 0;
-        this.y = 0;
-        this.scale = 1;
-
-        this.spin = 0;
-        this.collected = false;
-
-        // collision
-        this.hitRadius = 55;
+        this.collected = false;     // true if picked up by player
     }
 
-    update(delta) {
+    // check collision with player
+    checkCollision(player) {
+        if (this.collected) return false;
+        const laneDiff = Math.abs(this.lane - player.lane);
+        const posDiff = Math.abs(this.position - player.position);
+        const laneThreshold = 0.5; // adjust as needed
+        const posThreshold = 80;   // adjust based on track units
+
+        if (laneDiff <= laneThreshold && posDiff <= posThreshold) {
+            this.collected = true;
+            player.applyPowerUp(this.type);
+            return true;
+        }
+        return false;
+    }
+
+    // update (optional for animation)
+    update(delta = 1 / 60) {
+        // could add rotation, bounce, or sparkle
+    }
+
+    // draw on canvas
+    draw(ctx, camera, track) {
         if (this.collected) return;
+        if (!track) return;
 
-        // animate
-        this.spin += delta * 3;
+        const screen = track.project(this.position, this.lane);
+        if (!screen) return;
 
-        // project world → screen
-        const screen = this.track.project(this.position, this.lane);
-        this.x = screen.x;
-        this.y = screen.y;
-        this.scale = screen.scale;
-
-        // not visible behind camera
-        if (this.scale <= 0) return;
-    }
-
-    draw(ctx) {
-        if (this.collected || !this.scale) return;
-
+        const { x, y, scale } = screen;
         ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.scale, this.scale);
-        ctx.rotate(this.spin);
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+
+        const drawW = this.width;
+        const drawH = this.height;
 
         if (this.sprite && this.sprite.complete) {
-            ctx.drawImage(
-                this.sprite,
-                -this.width / 2,
-                -this.height / 2,
-                this.width,
-                this.height
-            );
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
-            // fallback circle icon
-            ctx.fillStyle = "gold";
-            ctx.beginPath();
-            ctx.arc(0, 0, 35, 0, Math.PI * 2);
-            ctx.fill();
+            // fallback shapes
+            switch (this.type) {
+                case "coin":
+                    ctx.fillStyle = "gold";
+                    ctx.beginPath();
+                    ctx.arc(0, 0, drawW / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                case "nitro":
+                    ctx.fillStyle = "orange";
+                    ctx.fillRect(-drawW / 2, -drawH / 2, drawW, drawH);
+                    break;
+                case "health":
+                    ctx.fillStyle = "lime";
+                    ctx.fillRect(-drawW / 2, -drawH / 2, drawW, drawH);
+                    ctx.strokeStyle = "#fff";
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(-drawW / 4, 0);
+                    ctx.lineTo(drawW / 4, 0);
+                    ctx.moveTo(0, -drawH / 4);
+                    ctx.lineTo(0, drawH / 4);
+                    ctx.stroke();
+                    break;
+            }
         }
 
         ctx.restore();
-    }
-
-    checkCollision(player) {
-        if (this.collected) return false;
-
-        const dx = this.x - player.x;
-        const dy = this.y - player.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < this.hitRadius + player.hitRadius) {
-            this.collected = true;  // remove from game
-            return true;
-        }
-
-        return false;
     }
 }
