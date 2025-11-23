@@ -1,186 +1,183 @@
-/* =========================================================
-                      GLOBAL
-========================================================= */
-
-body {
+/* ===== Global ===== */
+* {
     margin: 0;
-    overflow: hidden;
-    background: #000;
-    font-family: Arial, sans-serif;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
+body {
+    background: #111;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ===== Game Container ===== */
 #game-container {
     width: 100vw;
     height: 100vh;
     position: relative;
+    overflow: hidden;
 }
 
-/* =========================================================
-                      PUZZLE UI
-========================================================= */
-
-.puzzle-container {
+/* ===== Puzzle Overlay ===== */
+#puzzle-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.75);
+    background: rgba(15, 15, 15, 0.92);
+    backdrop-filter: blur(6px);
     display: flex;
-    justify-content: center;
     align-items: center;
-    z-index: 20;
+    justify-content: center;
+    z-index: 10;
 }
 
-.puzzle-box {
-    width: 320px;
-    height: 320px;
+#puzzle-box {
+    width: 360px;
     background: #222;
-    border-radius: 15px;
-    padding: 10px;
+    padding: 25px;
+    border-radius: 12px;
+    border: 2px solid #444;
+    text-align: center;
+    color: white;
+    box-shadow: 0 0 20px #000;
+}
+
+#puzzle-title {
+    font-size: 26px;
+    margin-bottom: 15px;
+    font-weight: bold;
+    color: #ffcc00;
+}
+
+/* ===== Puzzle Grid ===== */
+.puzzle-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(6, 50px);
     gap: 6px;
+    justify-content: center;
+    margin: 10px auto 20px auto;
 }
 
-.puzzle-tile {
-    background-size: cover;
-    background-position: center;
-    border-radius: 6px;
+.puzzle-cell {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    border: 1px solid #555;
+    background: #333;
     cursor: pointer;
+    transition: transform 0.1s ease;
 }
 
-/* blank space */
-.puzzle-empty {
-    background: #111;
+.puzzle-cell:hover {
+    transform: scale(1.1);
 }
 
-/* =========================================================
-                  COUNTRY MENU
-========================================================= */
+.type-1 { background: #ff4444; }   /* red */
+.type-2 { background: #44aaff; }   /* blue */
+.type-3 { background: #55dd55; }   /* green */
+.type-4 { background: #ffaa33; }   /* orange */
+.type-5 { background: #cc55ff; }   /* purple */
+.type-6 { background: #ffee33; }   /* yellow */
 
-.country-menu {
+/* ===== Progress + Timer ===== */
+#progress-wrapper {
+    margin: 15px 0;
+    text-align: center;
+}
+
+#progress-bar-bg {
+    height: 14px;
+    width: 100%;
+    border-radius: 20px;
+    background: #444;
+}
+
+#progress-bar-fill {
+    height: 14px;
+    width: 0%;
+    background: linear-gradient(90deg, #00ff99, #00cc66);
+    border-radius: 20px;
+    transition: width 0.2s ease;
+}
+
+#timer {
+    font-size: 20px;
+    margin-top: 10px;
+    font-weight: bold;
+    color: #ff6666;
+}
+
+/* ===== Complete Animation ===== */
+#puzzle-complete-popup {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(20, 20, 20, 0.9);
-    padding: 25px;
-    border-radius: 15px;
-    text-align: center;
-    width: 320px;
-    z-index: 15;
+    transform: translate(-50%, -50%) scale(0);
+    padding: 20px 40px;
+    background: #00cc66;
+    color: #000;
+    font-size: 36px;
+    font-weight: bold;
+    border-radius: 12px;
+    opacity: 0;
+    z-index: 999;
+    transition: transform 0.4s ease, opacity 0.4s ease;
 }
 
-.country-menu h2 {
-    color: white;
-    margin-bottom: 15px;
-    font-size: 24px;
+.show-popup {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
 }
 
-.country-btn {
+/* ===== Country Menu ===== */
+#country-menu {
+    position: absolute;
     width: 100%;
-    padding: 12px;
-    background: #0078ff;
-    color: white;
-    font-size: 18px;
-    border: none;
-    margin: 8px 0;
-    border-radius: 10px;
-    cursor: pointer;
-}
-
-.country-btn:hover {
-    background: #005fcc;
-}
-
-/* =========================================================
-                   MOBILE TOUCH CONTROLS
-========================================================= */
-
-.touch-joystick {
-    position: absolute;
-    bottom: 30px;
-    left: 30px;
-    width: 130px;
-    height: 130px;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 50%;
-    backdrop-filter: blur(4px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
-}
-
-.touch-joystick-thumb {
-    width: 55px;
-    height: 55px;
-    background: rgba(0, 140, 255, 0.7);
-    border-radius: 50%;
-    transition: 0.05s linear;
-}
-
-.nitro-button {
-    position: absolute;
-    bottom: 40px;
-    right: 40px;
-    width: 95px;
-    height: 95px;
-    background: rgba(255, 70, 70, 0.85);
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(4px);
-    z-index: 10;
-}
-
-.nitro-button img {
-    width: 55px;
-    height: 55px;
-}
-
-/* =========================================================
-                      HUD
-========================================================= */
-
-.hud {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    color: #fff;
-    font-size: 22px;
-    text-shadow: 0 0 6px black;
-    z-index: 12;
-}
-
-/* =========================================================
-                    DEBUG PANEL
-========================================================= */
-
-.debug-panel {
-    position: absolute;
-    right: 10px;
-    top: 10px;
-    background: rgba(255, 255, 255, 0.15);
-    padding: 10px;
-    border-radius: 10px;
-    z-index: 20;
+    height: 100%;
+    background: rgba(20, 20, 20, 0.96);
+    backdrop-filter: blur(3px);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    padding-top: 120px;
+    z-index: 8;
 }
 
-.debug-btn {
-    background: #444;
+#country-title {
+    font-size: 28px;
     color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 6px;
-    cursor: pointer;
+    margin-bottom: 20px;
 }
 
-.debug-btn:hover {
-    background: #666;
+.country-item {
+    width: 260px;
+    padding: 15px;
+    background: #333;
+    color: white;
+    border: 2px solid #555;
+    border-radius: 10px;
+    text-align: center;
+    margin: 10px;
+    cursor: pointer;
+    font-size: 20px;
+    transition: 0.2s;
+}
+
+.country-item:hover {
+    background: #555;
+}
+
+/* ===== Game Canvas ===== */
+#game-canvas {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: block;
 }
