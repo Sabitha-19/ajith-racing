@@ -1,39 +1,28 @@
 // scripts/Camera.js
-// Simple 2D follow camera for lane-based racing
-// Works with Racer.js, Enemy.js, Track.js
+// Simple follow-camera for 2D racing game
+// Tracks the player along the track and provides screen offset for rendering
 
 export default class Camera {
-    constructor(target = null) {
-        this.target = target; // usually player racer
-        this.x = 0;
-        this.y = 0;
-        this.z = 0;
-
-        // smooth follow parameters
-        this.lerpFactor = 0.08;
-        this.yOffset = -100;  // vertical offset (optional)
-        this.zOffset = -300;  // distance behind player
+    constructor(followTarget = null, canvasHeight = 600) {
+        this.target = followTarget; // Racer instance
+        this.offsetY = 0;           // camera scroll in track units
+        this.lerpSpeed = 0.08;      // smooth following
+        this.canvasHeight = canvasHeight;
     }
 
-    // call each frame
-    update() {
+    update(delta = 1 / 60) {
         if (!this.target) return;
 
-        // smooth follow X (lane offset)
-        const targetScreenX = this.target.lane * 200; // lane spacing in pixels
-        this.x += (targetScreenX - this.x) * this.lerpFactor;
-
-        // smooth follow Z (distance behind)
-        const targetZ = this.target.position + this.zOffset;
-        this.z += (targetZ - this.z) * this.lerpFactor;
-
-        // smooth follow Y (vertical, optional)
-        const targetY = this.target.height / 2 + this.yOffset;
-        this.y += (targetY - this.y) * this.lerpFactor;
+        // target position for camera: keep player around 30% from bottom
+        const targetOffset = this.target.position - this.canvasHeight * 0.3;
+        this.offsetY += (targetOffset - this.offsetY) * this.lerpSpeed;
     }
 
-    // optional: get camera object for Track.project
-    getView() {
-        return { x: this.x, y: this.y, z: this.z };
+    // Project world coordinates to screen
+    project(x, y, scale = 1) {
+        // in 2D top-down: x is lane offset, y is position along track
+        const screenX = x;
+        const screenY = y - this.offsetY;
+        return { x: screenX, y: screenY, scale };
     }
 }
