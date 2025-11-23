@@ -10,70 +10,56 @@
 <body>
 
   <!-- ============================ -->
-  <!--        PUZZLE ROOT           -->
+  <!--      PUZZLE (Candy Game)     -->
   <!-- ============================ -->
-  <div id="puzzle-root"
+  <div id="puzzle-container"
        style="position:fixed; top:0; left:0; right:0; bottom:0;
-              display:flex; align-items:center; justify-content:center; 
+              display:flex; align-items:center; justify-content:center;
               z-index:100;">
   </div>
 
+  <div id="puzzle-complete">Puzzle Complete!</div>
+
   <!-- ============================ -->
-  <!--       COUNTRY MENU           -->
+  <!--      COUNTRY MENU            -->
   <!-- ============================ -->
-  <div id="countryMenu"
-       style="position:fixed; left:20px; top:20px; display:none; z-index:90;">
-       
-    <h3 style="color:white; margin:0 0 10px 0;">Select Country</h3>
-
-    <div class="country-grid">
-      <button class="country-btn" data-country="india">India</button>
-      <button class="country-btn" data-country="japan">Japan</button>
-      <button class="country-btn" data-country="usa">USA</button>
-      <button class="country-btn" data-country="france">France</button>
-      <button class="country-btn" data-country="italy">Italy</button>
-      <button class="country-btn" data-country="germany">Germany</button>
-      <button class="country-btn" data-country="brazil">Brazil</button>
-      <button class="country-btn" data-country="australia">Australia</button>
-      <button class="country-btn" data-country="uae">UAE / Dubai</button>
-      <button class="country-btn" data-country="china">China</button>
-      <button class="country-btn" data-country="canada">Canada</button>
-      <button class="country-btn" data-country="uk">United Kingdom</button>
-      <button class="country-btn" data-country="southafrica">South Africa</button>
-    </div>
-
-  </div>
-
-  <div id="puzzle-container"></div>
-<div id="puzzle-complete">Puzzle Complete!</div>
-
-<div id="country-menu">
-    <div class="country-item" data-country="india">India</div>
-    <div class="country-item" data-country="japan">Japan</div>
-    <!-- etc -->
-</div>
-
-<div id="hud">
-    <div id="hud-message"></div>
-</div>
-
-<canvas id="game-canvas"></canvas>
-
-  
-  <!-- ============================ -->
-  <!--     GAME CANVAS AREA         -->
-  <!-- ============================ -->
-  <div id="game-container"
-       style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; z-index:10;">
-    <canvas id="gameCanvas"></canvas>
+  <div id="country-menu" style="display:none;">
+      <h2>Select Country</h2>
+      <div class="country-grid">
+          <div class="country-item" data-country="india">India</div>
+          <div class="country-item" data-country="japan">Japan</div>
+          <div class="country-item" data-country="usa">USA</div>
+          <div class="country-item" data-country="france">France</div>
+          <div class="country-item" data-country="italy">Italy</div>
+          <div class="country-item" data-country="germany">Germany</div>
+          <div class="country-item" data-country="brazil">Brazil</div>
+          <div class="country-item" data-country="australia">Australia</div>
+          <div class="country-item" data-country="uae">UAE / Dubai</div>
+          <div class="country-item" data-country="china">China</div>
+          <div class="country-item" data-country="canada">Canada</div>
+          <div class="country-item" data-country="uk">United Kingdom</div>
+          <div class="country-item" data-country="southafrica">South Africa</div>
+      </div>
   </div>
 
   <!-- ============================ -->
-  <!--        DEBUG PANEL           -->
+  <!--             HUD              -->
+  <!-- ============================ -->
+  <div id="hud" style="display:none;">
+      <div id="hud-message"></div>
+  </div>
+
+  <!-- ============================ -->
+  <!--       GAME CANVAS AREA       -->
+  <!-- ============================ -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ============================ -->
+  <!--         DEBUG PANEL          -->
   <!-- ============================ -->
   <div id="debug-panel" class="debug-panel" style="display:none;">
-    <button id="spawn-enemy">Spawn Enemy</button>
-    <button id="reset-race">Reset Race</button>
+      <button id="spawn-enemy">Spawn Enemy</button>
+      <button id="reset-race">Reset Race</button>
   </div>
 
   <!-- ============================ -->
