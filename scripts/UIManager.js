@@ -1,121 +1,130 @@
 // scripts/UIManager.js
-// Manages UI flow: Puzzle → Country selection → Race
-// Works with RacerGame.js
+// Handles UI overlays, menus, score display, and puzzle completion
 
 export default class UIManager {
-    constructor(game, assets = {}) {
-        this.game = game;       // instance of RacerGame
-        this.assets = assets;   // image/sound assets
+    constructor(gameContainer) {
+        this.container = gameContainer || document.body;
 
-        // DOM containers
-        this.container = document.getElementById("game-container");
-
-        // UI state
-        this.state = "puzzle"; // "puzzle" | "country" | "race"
-
-        // Puzzle element
-        this.puzzleEl = null;
-        this.createPuzzle();
-
-        // Country selection
-        this.countryEl = null;
-
-        // HUD
-        this.hudEl = null;
-        this.createHUD();
+        // Create main overlays
+        this._createMainMenu();
+        this._createCountryMenu();
+        this._createHUD();
     }
 
-    // -------------------------
-    // Puzzle
-    // -------------------------
-    createPuzzle() {
-        this.puzzleEl = document.createElement("div");
-        this.puzzleEl.id = "puzzle-ui";
-        this.puzzleEl.style.position = "absolute";
-        this.puzzleEl.style.top = "50%";
-        this.puzzleEl.style.left = "50%";
-        this.puzzleEl.style.transform = "translate(-50%, -50%)";
-        this.puzzleEl.style.color = "#fff";
-        this.puzzleEl.style.fontSize = "24px";
-        this.puzzleEl.style.textAlign = "center";
-        this.puzzleEl.innerHTML = `
-            <p>Solve the puzzle to unlock racing!</p>
-            <button id="puzzle-solve">Solve Puzzle</button>
-        `;
-        this.container.appendChild(this.puzzleEl);
+    // -----------------------
+    // Main Menu
+    // -----------------------
+    _createMainMenu() {
+        this.mainMenu = document.createElement("div");
+        this.mainMenu.id = "mainMenu";
+        this.mainMenu.style.position = "absolute";
+        this.mainMenu.style.left = "50%";
+        this.mainMenu.style.top = "50%";
+        this.mainMenu.style.transform = "translate(-50%, -50%)";
+        this.mainMenu.style.background = "#222";
+        this.mainMenu.style.padding = "30px";
+        this.mainMenu.style.borderRadius = "12px";
+        this.mainMenu.style.color = "white";
+        this.mainMenu.style.textAlign = "center";
+        this.mainMenu.style.zIndex = "1000";
 
-        document.getElementById("puzzle-solve").addEventListener("click", () => {
-            this.showCountrySelection();
-        });
-    }
+        const title = document.createElement("h1");
+        title.innerText = "Racing Game";
+        this.mainMenu.appendChild(title);
 
-    // -------------------------
-    // Country Selection
-    // -------------------------
-    showCountrySelection() {
-        this.state = "country";
-        this.puzzleEl.style.display = "none";
-
-        this.countryEl = document.createElement("div");
-        this.countryEl.id = "country-ui";
-        this.countryEl.style.position = "absolute";
-        this.countryEl.style.top = "50%";
-        this.countryEl.style.left = "50%";
-        this.countryEl.style.transform = "translate(-50%, -50%)";
-        this.countryEl.style.color = "#fff";
-        this.countryEl.style.fontSize = "24px";
-        this.countryEl.style.textAlign = "center";
-        this.countryEl.innerHTML = `<p>Select your country:</p>`;
-        
-        const countryList = this.assets.countries || ["India", "USA", "UK", "Japan"];
-        countryList.forEach(name => {
-            const btn = document.createElement("button");
-            btn.textContent = name;
-            btn.style.margin = "5px";
-            btn.addEventListener("click", () => this.startRace(name));
-            this.countryEl.appendChild(btn);
-        });
-
-        this.container.appendChild(this.countryEl);
-    }
-
-    // -------------------------
-    // Start Race
-    // -------------------------
-    startRace(selectedCountry) {
-        this.state = "race";
-        if (this.countryEl) this.countryEl.style.display = "none";
-
-        console.log("Starting race for country:", selectedCountry);
-        this.game.start(); // starts the RacerGame loop
-        this.hudEl.style.display = "block";
-    }
-
-    // -------------------------
-    // HUD
-    // -------------------------
-    createHUD() {
-        this.hudEl = document.createElement("div");
-        this.hudEl.id = "race-hud";
-        this.hudEl.style.position = "absolute";
-        this.hudEl.style.top = "10px";
-        this.hudEl.style.left = "10px";
-        this.hudEl.style.color = "#fff";
-        this.hudEl.style.fontSize = "20px";
-        this.hudEl.style.display = "none";
-        this.container.appendChild(this.hudEl);
-
-        // update loop
-        const updateHUD = () => {
-            if (this.game && this.game.player && this.state === "race") {
-                this.hudEl.innerHTML = `
-                    Coins: ${this.game.player.coins} <br>
-                    Health: ${Math.round(this.game.player.health)} <br>
-                    Nitro: ${this.game.player.nitroTime.toFixed(1)}s
-                `;
-            }
-            requestAnimationFrame(updateHUD);
+        const playBtn = document.createElement("button");
+        playBtn.innerText = "Play";
+        playBtn.style.marginTop = "20px";
+        playBtn.onclick = () => {
+            this.hideMainMenu();
+            if (this.onPlay) this.onPlay();
         };
-        updateHUD();
+        this.mainMenu.appendChild(playBtn);
+
+        this.container.appendChild(this.mainMenu);
+    }
+
+    showMainMenu() {
+        this.mainMenu.style.display = "block";
+    }
+    hideMainMenu() {
+        this.mainMenu.style.display = "none";
+    }
+
+    // -----------------------
+    // Country Selection Menu
+    // -----------------------
+    _createCountryMenu() {
+        this.countryMenu = document.createElement("div");
+        this.countryMenu.id = "countryMenu";
+        this.countryMenu.style.position = "absolute";
+        this.countryMenu.style.left = "50%";
+        this.countryMenu.style.top = "50%";
+        this.countryMenu.style.transform = "translate(-50%, -50%)";
+        this.countryMenu.style.background = "#333";
+        this.countryMenu.style.padding = "20px";
+        this.countryMenu.style.borderRadius = "10px";
+        this.countryMenu.style.color = "white";
+        this.countryMenu.style.textAlign = "center";
+        this.countryMenu.style.zIndex = "1000";
+        this.countryMenu.style.display = "none";
+
+        const title = document.createElement("h2");
+        title.innerText = "Select Country";
+        this.countryMenu.appendChild(title);
+
+        const countries = ["USA", "France", "Japan", "India"];
+        countries.forEach(name => {
+            const btn = document.createElement("button");
+            btn.innerText = name;
+            btn.style.margin = "5px";
+            btn.onclick = () => {
+                this.hideCountryMenu();
+                if (this.onSelectCountry) this.onSelectCountry(name);
+            };
+            this.countryMenu.appendChild(btn);
+        });
+
+        this.container.appendChild(this.countryMenu);
+    }
+
+    showCountryMenu() {
+        this.countryMenu.style.display = "block";
+    }
+    hideCountryMenu() {
+        this.countryMenu.style.display = "none";
+    }
+
+    // -----------------------
+    // In-game HUD (score, timer)
+    // -----------------------
+    _createHUD() {
+        this.hud = document.createElement("div");
+        this.hud.id = "hud";
+        this.hud.style.position = "absolute";
+        this.hud.style.top = "10px";
+        this.hud.style.left = "10px";
+        this.hud.style.color = "white";
+        this.hud.style.fontFamily = "Arial";
+        this.hud.style.fontSize = "16px";
+        this.hud.style.zIndex = "900";
+        this.hud.innerText = "Score: 0";
+
+        this.container.appendChild(this.hud);
+    }
+
+    updateScore(score) {
+        this.hud.innerText = `Score: ${score}`;
+    }
+
+    // -----------------------
+    // Callbacks
+    // -----------------------
+    onPlay(callback) {
+        this.onPlay = callback;
+    }
+
+    onSelectCountry(callback) {
+        this.onSelectCountry = callback;
     }
 }
