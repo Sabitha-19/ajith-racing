@@ -1,94 +1,175 @@
-// ===============================================
-//                   TRACK SYSTEM
-//  Converts lane + forward distance → screen XY
-//  Generates simple infinite road segments
-// ===============================================
+# Updated Racer Game Files (Option B Architecture)
 
+Below are the updated scripts for the **6 main files** used in the Option B architecture using `RacerGame.js` as the controller.
+
+---
+
+## **Track.js**
+
+```javascript
 export default class Track {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext("2d");
-
-        // Road width (affects perspective)
-        this.roadWidth = 2200;
-
-        // Camera height for projection
-        this.cameraHeight = 1000;
-
-        // Horizon point
-        this.horizon = canvas.height * 0.25;
-
-        // List of segments
-        this.segments = [];
-        this.segmentLength = 300;
-
-        this.generateInitialTrack();
+    constructor(scene) {
+        this.scene = scene;
+        this.trackMesh = null;
     }
 
-    // ----------------------------------------------------
-    //         GENERATE SIMPLE STRAIGHT ROAD
-    // ----------------------------------------------------
-    generateInitialTrack() {
-        let z = 0;
-
-        for (let i = 0; i < 500; i++) {
-            this.segments.push({
-                index: i,
-                p1: { z: z },
-                p2: { z: z + this.segmentLength }
-            });
-
-            z += this.segmentLength;
-        }
-    }
-
-    // ----------------------------------------------------
-    //          PROJECT 3D TRACK → 2D SCREEN
-    // ----------------------------------------------------
-    project(position, laneOffset) {
-        // Find the segment containing the player
-        const index = Math.floor(position / this.segmentLength) % this.segments.length;
-        const segment = this.segments[index];
-        if (!segment) return null;
-
-        const relativeZ = position - segment.p1.z;
-
-        // Depth calculation
-        const camZ = position + this.cameraHeight;
-
-        const scale = this.cameraHeight / (camZ - position + 1);
-        const centerX = this.canvas.width / 2;
-
-        // Lane system
-        const laneX = laneOffset * (this.roadWidth * 0.25);
-
-        const x = centerX + laneX * scale;
-        const y = this.horizon + (this.canvas.height - this.horizon) * scale;
-
-        return { x, y, scale };
-    }
-
-    // ----------------------------------------------------
-    //               DRAW ROAD STRIPS (OPTIONAL)
-    // ----------------------------------------------------
-    drawRoad() {
-        const ctx = this.ctx;
-
-        ctx.fillStyle = "#333";
-        ctx.fillRect(0, this.horizon, this.canvas.width, this.canvas.height);
-
-        ctx.fillStyle = "#555";
-
-        // simple road rectangle (not projected)
-        const roadWidthBottom = this.canvas.width * 0.7;
-        const roadWidthTop = this.canvas.width * 0.2;
-
-        ctx.beginPath();
-        ctx.moveTo((this.canvas.width - roadWidthBottom) / 2, this.canvas.height);
-        ctx.lineTo((this.canvas.width + roadWidthBottom) / 2, this.canvas.height);
-        ctx.lineTo((this.canvas.width + roadWidthTop) / 2, this.horizon);
-        ctx.lineTo((this.canvas.width - roadWidthTop) / 2, this.horizon);
-        ctx.closePath();
-        ctx.fill();
+    load() {
+        const geometry = new THREE.PlaneGeometry(500, 500, 20, 20);
+        const material = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        this.trackMesh = new THREE.Mesh(geometry, material);
+        this.trackMesh.rotation.x = -Math.PI / 2;
+        this.trackMesh.receiveShadow = true;
+        this.scene.add(this.trackMesh);
     }
 }
+```
+
+---
+
+## **Racer.js**
+
+```javascript
+export default class Racer {
+    constructor(scene) {
+        this.scene = scene;
+        this.mesh = null;
+        this.speed = 0;
+        this.maxSpeed = 2;
+        this.acceleration = 0.05;
+        this.turnSpeed = 0.04;
+    }
+
+    load() {
+        const geometry = new THREE.BoxGeometry(2, 1, 4);
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.castShadow = true;
+        this.mesh.position.set(0, 0.5, 0);
+        this.scene.add(this.mesh);
+    }
+
+    update(input) {
+        if (!this.mesh) return;
+
+        if (input.forward) this.speed = Math.min(this.speed + this.acceleration, this.maxSpeed);
+        else this.speed *= 0.95;
+
+        if (input.left) this.mesh.rotation.y += this.turnSpeed;
+        if (input.right) this.mesh.rotation.y -= this.turnSpeed;
+
+        this.mesh.position.x += Math.sin(this.mesh.rotation.y) * this.speed;
+        this.mesh.position.z += Math.cos(this.mesh.rotation.y) * this.speed;
+    }
+}
+```
+
+---
+
+## **Camera.js**
+
+```javascript
+export default class FollowCamera {
+    constructor(camera, racer) {
+        this.camera = camera;
+        this.racer = racer;
+    }
+
+    update() {
+        if (!this.racer.mesh) return;
+
+        const targetPos = this.racer.mesh.position;
+        this.camera.position.lerp(
+            new THREE.Vector3(targetPos.x, targetPos.y + 8, targetPos.z + 14),
+            0.1
+        );
+        this.camera.lookAt(targetPos);
+    }
+}
+```
+
+---
+
+## **TouchControls.js**
+
+```javascript
+export default class TouchControls {
+    constructor() {
+        this.forward = false;
+        this.left = false;
+        this.right = false;
+
+        this.#setupKeyboard();
+    }
+
+    #setupKeyboard() {
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "ArrowUp") this.forward = true;
+            if (e.code === "ArrowLeft") this.left = true;
+            if (e.code === "ArrowRight") this.right = true;
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (e.code === "ArrowUp") this.forward = false;
+            if (e.code === "ArrowLeft") this.left = false;
+            if (e.code === "ArrowRight") this.right = false;
+        });
+    }
+}
+```
+
+---
+
+## **EnemyRacer.js**
+
+```javascript
+export default class EnemyRacer {
+    constructor(scene) {
+        this.scene = scene;
+        this.mesh = null;
+        this.speed = 1.3;
+    }
+
+    load() {
+        const geometry = new THREE.BoxGeometry(2, 1, 4);
+        const material = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.position.set(0, 0.5, -20);
+        this.scene.add(this.mesh);
+    }
+
+    update() {
+        if (!this.mesh) return;
+
+        this.mesh.position.z += this.speed;
+    }
+}
+```
+
+---
+
+## **PowerUp.js**
+
+```javascript
+export default class PowerUp {
+    constructor(scene) {
+        this.scene = scene;
+        this.mesh = null;
+    }
+
+    spawn(x, z) {
+        const geometry = new THREE.SphereGeometry(1, 16, 16);
+        const material = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.position.set(x, 1, z);
+        this.scene.add(this.mesh);
+    }
+
+    update() {
+        if (this.mesh) this.mesh.rotation.y += 0.05;
+    }
+}
+```
+
+---
+
+If you want, I can now send the updated **RacerGame.js** and **main.js**, OR integrate your puzzle/menu flow directly into main.js.
