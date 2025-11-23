@@ -1,79 +1,118 @@
 // scripts/main.js
+import Puzzle from "./puzzle.js";
 import RacerGame from "./RacerGame.js";
-import TouchControls from "./TouchControls.js";
 import UIManager from "./UIManager.js";
 
-// -------------------------
-// Assets
-// -------------------------
-const assets = {};
-const assetPaths = {
-    car: "assets/car.png",
-    enemy: "assets/enemy.png",
-    flame: "assets/flame.png",
-    coin: "assets/coin.png",
-    nitro: "assets/nitro.png",
-    health: "assets/health.png",
-    countries: "data/countries.json" // JSON file with country list
+// Global assets container (sprites)
+window.__assets = {};
+
+// Preload images used in racing
+const preloadImages = (paths) => {
+    const promises = [];
+    paths.forEach(p => {
+        const img = new Image();
+        img.src = p.src;
+        window.__assets[p.name] = img;
+        promises.push(new Promise(res => img.onload = res));
+    });
+    return Promise.all(promises);
 };
 
-// Load images
-function loadImage(src) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.src = src;
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-    });
-}
+const racingAssets = [
+    { src: "assets/car.png", name: "car" },
+    { src: "assets/enemy.png", name: "enemy" },
+    { src: "assets/road.png", name: "road" },
+    { src: "assets/start.png", name: "start" },
+    { src: "assets/finish.png", name: "finish" },
+    { src: "assets/flame.png", name: "flame" },
+    { src: "assets/health.png", name: "health" },
+    { src: "assets/nitro.png", name: "nitro" }
+];
 
-// Load JSON
-function loadJSON(src) {
-    return fetch(src).then(res => res.json());
-}
+// ---------------------------
+// Step 1: Start Puzzle
+// ---------------------------
+const startPuzzle = async () => {
+    // Create puzzle canvas and element
+    const puzzleCanvas = document.createElement("canvas");
+    document.body.appendChild(puzzleCanvas);
 
-// -------------------------
-// Main init
-// -------------------------
-async function initGame() {
-    // Load images
-    assets.car = await loadImage(assetPaths.car);
-    assets.enemy = await loadImage(assetPaths.enemy);
-    assets.flame = await loadImage(assetPaths.flame);
-    assets.coin = await loadImage(assetPaths.coin);
-    assets.nitro = await loadImage(assetPaths.nitro);
-    assets.health = await loadImage(assetPaths.health);
+    const puzzle = new Puzzle(
+        {
+            canvas: puzzleCanvas,
+            rows: 7,
+            cols: 7,
+            tileSize: 64,
+            timeLimitSec: 45,
+            progressTarget: 6,
+        },
+        () => {
+            // Puzzle complete → move to country menu
+            puzzle.destroy();
+            showCountryMenu();
+        }
+    );
+};
 
-    // Load countries JSON
-    try {
-        assets.countries = await loadJSON(assetPaths.countries);
-    } catch (err) {
-        console.warn("Could not load countries JSON, using default");
-        assets.countries = ["India", "USA", "UK", "Japan"];
-    }
+// ---------------------------
+// Step 2: Show Country Menu
+// ---------------------------
+const showCountryMenu = () => {
+    const countryUI = document.createElement("div");
+    countryUI.id = "country-ui";
+    countryUI.innerHTML = `<h2>Select Your Country</h2>`;
+    document.body.appendChild(countryUI);
 
-    // Canvas setup
-    const canvas = document.getElementById("game-canvas");
+    fetch("data/countries.json")
+        .then(res => res.json())
+        .then(countries => {
+            countries.slice(0, 6).forEach(c => {
+                const btn = document.createElement("button");
+                btn.innerText = c.name;
+                btn.onclick = () => {
+                    countryUI.remove();
+                    startRace(c);
+                };
+                countryUI.appendChild(btn);
+            });
+        });
+};
+
+// ---------------------------
+// Step 3: Start 2D Racing Game
+// ---------------------------
+const startRace = async (country) => {
+    await preloadImages(racingAssets);
+
+    // Create canvas for racing
+    const gameContainer = document.getElementById("game-container") || document.createElement("div");
+    gameContainer.id = "game-container";
+    document.body.appendChild(gameContainer);
+    gameContainer.innerHTML = ""; // clear anything inside
+
+    const canvas = document.createElement("canvas");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    gameContainer.appendChild(canvas);
 
-    // Initialize game engine
-    const game = new RacerGame(canvas, assets);
+    // Initialize UIManager
+    const uiManager = new UIManager({ container: gameContainer });
 
-    // Initialize controls
-    const controls = new TouchControls(game, {
-        joystickElement: document.getElementById("joystick")
+    // Initialize racing engine
+    const game = new RacerGame({
+        canvas,
+        uiManager,
+        country,
+        assets: window.__assets
     });
 
-    // Initialize UI manager
-    const uiManager = new UIManager(game, assets);
+    game.start();
+};
 
-    // Handle resize
-    window.addEventListener("resize", () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    });
-}
+// ---------------------------
+// Step 4: Launch everything
+// ---------------------------
+window.onload = () => {
+    startPuzzle();
+};
 
-// Start
-initGame();
