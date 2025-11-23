@@ -1,183 +1,87 @@
-/* ===== Global ===== */
-* {
+/* style.css */
+
+/* Reset body */
+body {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-body {
-    background: #111;
-    font-family: Arial, sans-serif;
     overflow: hidden;
+    background-color: #111;
+    font-family: Arial, sans-serif;
 }
 
-.hidden {
-    display: none !important;
-}
-
-/* ===== Game Container ===== */
+/* Game container */
 #game-container {
+    position: relative;
     width: 100vw;
     height: 100vh;
-    position: relative;
-    overflow: hidden;
 }
 
-/* ===== Puzzle Overlay ===== */
-#puzzle-overlay {
-    position: absolute;
+/* Canvas */
+canvas {
+    display: block;
     width: 100%;
     height: 100%;
-    background: rgba(15, 15, 15, 0.92);
-    backdrop-filter: blur(6px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
+    background-color: #111;
 }
 
-#puzzle-box {
-    width: 360px;
-    background: #222;
-    padding: 25px;
-    border-radius: 12px;
-    border: 2px solid #444;
-    text-align: center;
-    color: white;
-    box-shadow: 0 0 20px #000;
-}
-
-#puzzle-title {
-    font-size: 26px;
-    margin-bottom: 15px;
-    font-weight: bold;
-    color: #ffcc00;
-}
-
-/* ===== Puzzle Grid ===== */
-.puzzle-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 50px);
-    gap: 6px;
-    justify-content: center;
-    margin: 10px auto 20px auto;
-}
-
-.puzzle-cell {
-    width: 50px;
-    height: 50px;
-    border-radius: 8px;
-    border: 1px solid #555;
-    background: #333;
+/* Buttons */
+button {
+    padding: 8px 16px;
+    margin: 5px;
+    font-size: 16px;
     cursor: pointer;
-    transition: transform 0.1s ease;
+    border: none;
+    border-radius: 6px;
+    background-color: #222;
+    color: #fff;
+    transition: all 0.2s ease;
 }
 
-.puzzle-cell:hover {
-    transform: scale(1.1);
+button:hover {
+    background-color: #555;
 }
 
-.type-1 { background: #ff4444; }   /* red */
-.type-2 { background: #44aaff; }   /* blue */
-.type-3 { background: #55dd55; }   /* green */
-.type-4 { background: #ffaa33; }   /* orange */
-.type-5 { background: #cc55ff; }   /* purple */
-.type-6 { background: #ffee33; }   /* yellow */
-
-/* ===== Progress + Timer ===== */
-#progress-wrapper {
-    margin: 15px 0;
-    text-align: center;
-}
-
-#progress-bar-bg {
-    height: 14px;
-    width: 100%;
-    border-radius: 20px;
-    background: #444;
-}
-
-#progress-bar-fill {
-    height: 14px;
-    width: 0%;
-    background: linear-gradient(90deg, #00ff99, #00cc66);
-    border-radius: 20px;
-    transition: width 0.2s ease;
-}
-
-#timer {
-    font-size: 20px;
-    margin-top: 10px;
-    font-weight: bold;
-    color: #ff6666;
-}
-
-/* ===== Complete Animation ===== */
-#puzzle-complete-popup {
+/* Puzzle UI */
+#puzzle-ui {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    padding: 20px 40px;
-    background: #00cc66;
-    color: #000;
-    font-size: 36px;
-    font-weight: bold;
-    border-radius: 12px;
-    opacity: 0;
-    z-index: 999;
-    transition: transform 0.4s ease, opacity 0.4s ease;
-}
-
-.show-popup {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-}
-
-/* ===== Country Menu ===== */
-#country-menu {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: rgba(20, 20, 20, 0.96);
-    backdrop-filter: blur(3px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-top: 120px;
-    z-index: 8;
-}
-
-#country-title {
-    font-size: 28px;
-    color: white;
-    margin-bottom: 20px;
-}
-
-.country-item {
-    width: 260px;
-    padding: 15px;
-    background: #333;
-    color: white;
-    border: 2px solid #555;
-    border-radius: 10px;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 24px;
     text-align: center;
-    margin: 10px;
-    cursor: pointer;
+}
+
+/* Country selection UI */
+#country-ui {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 24px;
+    text-align: center;
+}
+
+/* HUD */
+#race-hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #fff;
     font-size: 20px;
-    transition: 0.2s;
+    z-index: 10;
 }
 
-.country-item:hover {
-    background: #555;
-}
-
-/* ===== Game Canvas ===== */
-#game-canvas {
-    width: 100%;
-    height: 100%;
-    background: #000;
-    display: block;
+/* Optional joystick for mobile */
+#joystick {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    touch-action: none;
+    z-index: 5;
 }
