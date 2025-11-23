@@ -1,90 +1,95 @@
 // scripts/Enemy.js
-// ---------------------------------------------
-// Pure 2D Enemy Racer
-// Works with Track.js + RacerGame.js
-// ---------------------------------------------
+// Lane-based 2D enemy racer
+// Works with Track.js and RacerGame.js
 
 export default class Enemy {
-    constructor(options = {}) {
-        this.track = options.track;
-        this.sprite = options.sprite; // image object
-        this.lane = options.lane ?? 0; // -1, 0, 1
-        this.position = options.position ?? -1000; // starts behind player
-        this.speed = options.speed ?? 250; // forward speed
-        this.maxSpeed = options.maxSpeed ?? 360;
-        this.aiChangeLaneTimer = 0;
+    constructor(sprite = null, startLane = 0, startPos = 0) {
+        this.sprite = sprite;
 
-        // render settings
-        this.width = 130;
-        this.height = 260;
+        // track-space
+        this.position = startPos;  // forward distance
+        this.lane = startLane;     // -1 left, 0 center, +1 right
+        this.targetLane = startLane;
 
-        // collision
-        this.hitRadius = 65;
+        // movement
+        this.speed = 12 + Math.random() * 3;  // base speed
+        this.maxSpeed = 16;
+        this.accel = 3;
 
-        this.x = 0;
-        this.y = 0;
-        this.scale = 1;
+        // drift / lean
+        this.lean = 0;
+
+        // dimensions
+        this.width = 110;
+        this.height = 200;
+
+        // health (optional)
+        this.health = 100;
+
+        // simple AI timers
+        this.changeLaneTimer = Math.random() * 2 + 1; // seconds
     }
 
-    update(delta, player) {
-        // move forward
-        this.position += this.speed * delta;
+    // update each frame: delta in seconds
+    update(delta = 1 / 60, track = null) {
+        if (!track) return;
 
-        // enemy tries to overtake the player
-        if (player && this.position < player.position + 300) {
-            this.speed += 120 * delta; // accelerate to catch up
-        } else {
-            this.speed -= 80 * delta; // slow if too far
+        // -------------------------
+        // lane AI: randomly switch lanes
+        // -------------------------
+        this.changeLaneTimer -= delta;
+        if (this.changeLaneTimer <= 0) {
+            const dir = Math.floor(Math.random() * 3) - 1; // -1,0,1
+            this.targetLane = Math.max(-1, Math.min(1, this.lane + dir));
+            this.changeLaneTimer = Math.random() * 2 + 1;
         }
 
-        // cap speed
-        this.speed = Math.max(120, Math.min(this.speed, this.maxSpeed));
+        // smooth lane movement
+        const laneLerpSpeed = 2.5 * delta;
+        this.lane += (this.targetLane - this.lane) * Math.min(1, laneLerpSpeed);
 
-        // AI lane switching every few seconds
-        this.aiChangeLaneTimer -= delta;
-        if (this.aiChangeLaneTimer <= 0) {
-            this.aiChangeLaneTimer = 2 + Math.random() * 2;
-            const lanes = [-1, 0, 1];
-            this.lane = lanes[Math.floor(Math.random() * lanes.length)];
-        }
+        // -------------------------
+        // forward movement
+        // -------------------------
+        this.speed += this.accel * delta;
+        if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
+        this.position += this.speed * delta * 60; // match Racer scaling
 
-        // project on screen using Track.js
-        const screen = this.track.project(this.position, this.lane);
-        this.x = screen.x;
-        this.y = screen.y;
-        this.scale = screen.scale;
+        // simple lean based on lane change
+        this.lean = (this.targetLane - this.lane) * 2;
     }
 
-    draw(ctx) {
-        if (!this.scale) return;
+    // handle collision or crash
+    crash() {
+        this.speed *= 0.35;
+    }
 
+    // draw enemy on canvas
+    draw(ctx, camera, track) {
+        if (!track) return;
+        const screen = track.project(this.position, this.lane);
+        if (!screen) return;
+
+        const { x, y, scale } = screen;
         ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.scale, this.scale);
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.rotate(this.lean * 0.05);
+
+        const drawW = this.width;
+        const drawH = this.height;
 
         if (this.sprite && this.sprite.complete) {
-            ctx.drawImage(
-                this.sprite,
-                -this.width / 2,
-                -this.height,
-                this.width,
-                this.height
-            );
+            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
-            // fallback red car
-            ctx.fillStyle = "blue";
-            ctx.fillRect(-40, -100, 80, 180);
+            ctx.fillStyle = "#ff0055";
+            ctx.fillRect(-drawW / 2, -drawH / 2, drawW, drawH);
         }
 
-        ctx.restore();
-    }
+        // optional windshield
+        ctx.fillStyle = "rgba(255,255,255,0.15)";
+        ctx.fillRect(-drawW * 0.12, -drawH * 0.45, drawW * 0.24, drawH * 0.18);
 
-    // simple circle-based collision
-    collidesWith(player) {
-        if (!player) return false;
-        const dx = this.x - player.x;
-        const dy = this.y - player.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        return dist < this.hitRadius + player.hitRadius;
+        ctx.restore();
     }
 }
