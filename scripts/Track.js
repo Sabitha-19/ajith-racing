@@ -1,124 +1,102 @@
 // scripts/Track.js
-// ---------------------------------------------
-// Pure 2D Track Engine
-// Provides:
-//  - project(position, lane) -> { x, y, scale }
-//  - update(delta)
-//  - draw(ctx)
-// ---------------------------------------------
+// 2D lane-based track manager
+// Handles road projection, lane positions, start/finish, and scaling for pseudo-3D effect
 
 export default class Track {
-    constructor(assets = {}) {
-        // assets.road, assets.background
-        this.assets = assets;
+    constructor(options = {}) {
+        this.lanes = options.lanes || 3;        // number of lanes (-1,0,+1)
+        this.length = options.length || 10000;  // total track length
+        this.width = options.width || 600;      // road width in pixels
+        this.segmentLength = options.segmentLength || 200; // distance between segments
+        this.segments = [];                      // array of track segments
 
-        // projection settings
-        this.roadWidth = 1800;       // world distance width
-        this.screenRoadWidth = 1400; // how wide it appears on screen (scaled)
-        this.cameraHeight = 1200;    // higher = farther view
-        this.horizon = 180;          // y-pos of horizon
+        this.startLine = options.startLine || 0;
+        this.finishLine = options.finishLine || this.length;
 
-        // world curves
-        this.curve = 0;
-        this.curveTarget = 0;
-        this.curveStrength = 0.06;
-
-        // internal time for slight waving roads
-        this._t = 0;
+        // generate flat segments (can add curves/elevation later)
+        this.generateSegments();
     }
 
-    // Called every frame by RacerGame
-    update(delta) {
-        this._t += delta;
+    generateSegments() {
+        const count = Math.ceil(this.length / this.segmentLength);
+        this.segments = [];
 
-        // auto waving for realism
-        const wave = Math.sin(this._t * 0.3) * 0.5;
-        this.curveTarget = wave;
-
-        // smooth towards curveTarget
-        this.curve += (this.curveTarget - this.curve) * 0.02;
+        for (let i = 0; i < count; i++) {
+            const segment = {
+                index: i,
+                z: i * this.segmentLength,
+                curve: 0,        // curve strength (for future use)
+                y: 0             // elevation
+            };
+            this.segments.push(segment);
+        }
     }
 
-    // ---------------------------------------------
-    // PROJECT WORLD POSITION TO SCREEN
-    // position = forward z
-    // lane = -1..1
-    // returns: { x, y, scale }
-    // ---------------------------------------------
-    project(position, lane = 0) {
-        // world depth simul
-        const dz = Math.max(1, position);
-        const scale = this.cameraHeight / (this.cameraHeight + dz);
+    // Project world position + lane into screen coordinates
+    // Returns: { x, y, scale }
+    // position: distance along track
+    // lane: -1 left, 0 center, +1 right
+    project(position, lane = 0, camera = { x: 0, y: 0, z: 0 }) {
+        if (!this.segments.length) return null;
 
-        // forward -> screen y
-        const y = this.horizon + scale * (900);
+        // clamp position
+        position = Math.max(0, Math.min(position, this.length));
+
+        // find segment
+        const index = Math.floor(position / this.segmentLength);
+        const segment = this.segments[Math.min(index, this.segments.length - 1)];
+
+        // basic perspective scaling (near/far)
+        const cameraZ = camera.z || 0;
+        const dz = segment.z - cameraZ;
+        const scale = 1000 / (dz + 1);  // tweakable perspective
 
         // lane offset
-        const laneX = lane * (this.screenRoadWidth * 0.3);
-
-        // road-curving
-        const curveOffset = this.curve * Math.pow(scale, 1.8) * 900;
-
-        const x = innerWidth / 2 + laneX * scale + curveOffset;
+        const laneWidth = this.width / this.lanes;
+        const x = (lane * laneWidth) * scale + (camera.x || 0);
+        const y = (segment.y - (camera.y || 0)) * scale + 300; // baseline screen y
 
         return { x, y, scale };
     }
 
-    // ---------------------------------------------
-    // DRAW BACKGROUND + ROAD
-    // ---------------------------------------------
-    draw(ctx) {
-        const W = ctx.canvas.width;
-        const H = ctx.canvas.height;
+    // helper: return lane x offset in pixels (screen space)
+    getLaneOffset(lane = 0, scale = 1) {
+        const laneWidth = this.width / this.lanes;
+        return lane * laneWidth * scale;
+    }
 
-        // -----------------------------------------
-        // BACKGROUND
-        // -----------------------------------------
-        if (this.assets.background && this.assets.background.complete) {
-            ctx.drawImage(this.assets.background, 0, 0, W, H * 0.6);
-        } else {
-            // fallback gradient
-            const g = ctx.createLinearGradient(0, 0, 0, H * 0.6);
-            g.addColorStop(0, "#0a0f25");
-            g.addColorStop(1, "#14305f");
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, W, H * 0.6);
-        }
+    // optional: get next segment for collision/AI
+    getSegmentAt(position) {
+        const index = Math.floor(position / this.segmentLength);
+        return this.segments[Math.min(index, this.segments.length - 1)];
+    }
 
-        // -----------------------------------------
-        // ROAD (simple perspective trapezoid)
-        // -----------------------------------------
-        const roadTop = this.horizon;
-        const roadBottom = H;
+    // optional: draw track (for debug or background)
+    draw(ctx, camera = { x: 0, y: 0, z: 0 }) {
+        if (!ctx) return;
 
-        const roadTopW = W * 0.30;
-        const roadBottomW = W * 0.88;
+        const horizon = 300;
+        const roadWidth = this.width;
 
-        const curveOffset = this.curve * 300;
+        for (let i = 0; i < this.segments.length; i++) {
+            const seg = this.segments[i];
+            const screen = this.project(seg.z, 0, camera);
+            if (!screen) continue;
 
-        ctx.fillStyle = "#2b2b2b";
-        ctx.beginPath();
-        ctx.moveTo(W / 2 - roadTopW + curveOffset, roadTop);
-        ctx.lineTo(W / 2 + roadTopW + curveOffset, roadTop);
-        ctx.lineTo(W / 2 + roadBottomW - curveOffset, roadBottom);
-        ctx.lineTo(W / 2 - roadBottomW - curveOffset, roadBottom);
-        ctx.closePath();
-        ctx.fill();
+            const laneW = roadWidth / this.lanes * screen.scale;
+            ctx.fillStyle = i % 2 === 0 ? "#555555" : "#666666"; // simple alternating road color
+            ctx.fillRect(screen.x - laneW * 1.5, screen.y, laneW * 3, 4); // road segment
 
-        // road stripes
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 4;
-        const stripeCount = 18;
-
-        for (let i = 0; i < stripeCount; i++) {
-            const z = (i / stripeCount) * 6000;
-            const scr = this.project(z, 0);
-            const stripeW = scr.scale * roadTopW * 0.6;
-
-            ctx.beginPath();
-            ctx.moveTo(scr.x - stripeW * 0.4, scr.y);
-            ctx.lineTo(scr.x + stripeW * 0.4, scr.y);
-            ctx.stroke();
+            // lane dividers
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            for (let l = 1; l < this.lanes; l++) {
+                const lx = screen.x - laneW * 1.5 + l * laneW;
+                ctx.beginPath();
+                ctx.moveTo(lx, screen.y);
+                ctx.lineTo(lx, screen.y + 4);
+                ctx.stroke();
+            }
         }
     }
 }
