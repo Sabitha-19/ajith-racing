@@ -1,74 +1,79 @@
-// ============================
-// MAIN.JS — GAME CONTROLLER
-// ============================
+// scripts/main.js
+import RacerGame from "./RacerGame.js";
+import TouchControls from "./TouchControls.js";
+import UIManager from "./UIManager.js";
 
-import { Puzzle } from "./scripts/puzzle.js";
-import { UIManager } from "./scripts/UIManager.js";
-import { RacerGame } from "./scripts/RacerGame.js";
-
-// Global handles
-let puzzle = null;
-let ui = null;
-let game = null;
-
-/*  
-    FLOW:
-    1. Page loads → Show puzzle
-    2. Player completes puzzle → Animation → Show country menu
-    3. Select country → Start racing game
-*/
-
-window.onload = () => {
-    ui = new UIManager();
-    startPuzzle();
+// -------------------------
+// Assets
+// -------------------------
+const assets = {};
+const assetPaths = {
+    car: "assets/car.png",
+    enemy: "assets/enemy.png",
+    flame: "assets/flame.png",
+    coin: "assets/coin.png",
+    nitro: "assets/nitro.png",
+    health: "assets/health.png",
+    countries: "data/countries.json" // JSON file with country list
 };
 
-// ============================
-// STEP 1 — START PUZZLE
-// ============================
-function startPuzzle() {
-    ui.showPuzzle();
-    puzzle = new Puzzle({
-        onComplete: handlePuzzleComplete
+// Load images
+function loadImage(src) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
     });
 }
 
-// ============================
-// STEP 2 — PUZZLE COMPLETED
-// ============================
-function handlePuzzleComplete() {
-    ui.showPuzzleCompleteAnimation(() => {
-        ui.hidePuzzle();
-        ui.showCountryMenu();
+// Load JSON
+function loadJSON(src) {
+    return fetch(src).then(res => res.json());
+}
+
+// -------------------------
+// Main init
+// -------------------------
+async function initGame() {
+    // Load images
+    assets.car = await loadImage(assetPaths.car);
+    assets.enemy = await loadImage(assetPaths.enemy);
+    assets.flame = await loadImage(assetPaths.flame);
+    assets.coin = await loadImage(assetPaths.coin);
+    assets.nitro = await loadImage(assetPaths.nitro);
+    assets.health = await loadImage(assetPaths.health);
+
+    // Load countries JSON
+    try {
+        assets.countries = await loadJSON(assetPaths.countries);
+    } catch (err) {
+        console.warn("Could not load countries JSON, using default");
+        assets.countries = ["India", "USA", "UK", "Japan"];
+    }
+
+    // Canvas setup
+    const canvas = document.getElementById("game-canvas");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Initialize game engine
+    const game = new RacerGame(canvas, assets);
+
+    // Initialize controls
+    const controls = new TouchControls(game, {
+        joystickElement: document.getElementById("joystick")
+    });
+
+    // Initialize UI manager
+    const uiManager = new UIManager(game, assets);
+
+    // Handle resize
+    window.addEventListener("resize", () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
     });
 }
 
-// ============================
-// STEP 3 — SELECT COUNTRY → START GAME
-// ============================
-document.addEventListener("click", (event) => {
-    if (event.target.classList.contains("country-item")) {
-        const country = event.target.dataset.country;
-        beginRacing(country);
-    }
-});
-
-// ============================
-// RACING GAME START
-// ============================
-function beginRacing(country) {
-    ui.hideCountryMenu();
-
-    // Load racing game
-    if (!game) {
-        game = new RacerGame("game-canvas");
-    }
-
-    game.loadTrack(country);
-    game.start();
-}
-
-// ============================
-// Debug (optional)
-// ============================
-// window.restartPuzzle = startPuzzle;
+// Start
+initGame();
