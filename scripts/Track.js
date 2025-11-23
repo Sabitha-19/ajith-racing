@@ -172,4 +172,3 @@ export default class PowerUp {
 
 ---
 
-If you want, I can now send the updated **RacerGame.js** and **main.js**, OR integrate your puzzle/menu flow directly into main.js.
