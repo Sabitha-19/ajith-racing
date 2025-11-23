@@ -1,123 +1,98 @@
 // scripts/TouchControls.js
-// ---------------------------------------------------
-// Input Manager (Keyboard + Mobile Touch Joystick)
-// ---------------------------------------------------
+// Handles player input (keyboard + touch/joystick)
+// Updates control object used by RacerGame
 
 export default class TouchControls {
-    constructor() {
-        this.forward = false;
-        this.left = false;
-        this.right = false;
-        this.nitro = false;
+    constructor(game, options = {}) {
+        this.game = game; // instance of RacerGame
+        this.controls = { left: false, right: false, down: false, nitro: false };
 
-        this.isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        // optional joystick element
+        this.joystick = options.joystickElement || null;
 
-        this.#setupKeyboard();
-        if (this.isMobile) this.#createTouchControls();
+        // bind events
+        this.bindKeyboard();
+        this.bindTouch();
     }
 
-    // ---------------------------------------------------
-    // Keyboard Input (Desktop)
-    // ---------------------------------------------------
-    #setupKeyboard() {
+    bindKeyboard() {
         window.addEventListener("keydown", e => {
-            if (e.code === "ArrowUp" || e.code === "KeyW") this.forward = true;
-            if (e.code === "ArrowLeft" || e.code === "KeyA") this.left = true;
-            if (e.code === "ArrowRight" || e.code === "KeyD") this.right = true;
-            if (e.code === "Space") this.nitro = true;
+            switch (e.code) {
+                case "ArrowLeft":
+                case "KeyA":
+                    this.controls.left = true;
+                    break;
+                case "ArrowRight":
+                case "KeyD":
+                    this.controls.right = true;
+                    break;
+                case "ArrowDown":
+                case "KeyS":
+                    this.controls.down = true;
+                    break;
+                case "Space":
+                    this.controls.nitro = true;
+                    break;
+            }
+            this.game.setControls(this.controls);
         });
 
         window.addEventListener("keyup", e => {
-            if (e.code === "ArrowUp" || e.code === "KeyW") this.forward = false;
-            if (e.code === "ArrowLeft" || e.code === "KeyA") this.left = false;
-            if (e.code === "ArrowRight" || e.code === "KeyD") this.right = false;
-            if (e.code === "Space") this.nitro = false;
+            switch (e.code) {
+                case "ArrowLeft":
+                case "KeyA":
+                    this.controls.left = false;
+                    break;
+                case "ArrowRight":
+                case "KeyD":
+                    this.controls.right = false;
+                    break;
+                case "ArrowDown":
+                case "KeyS":
+                    this.controls.down = false;
+                    break;
+                case "Space":
+                    this.controls.nitro = false;
+                    break;
+            }
+            this.game.setControls(this.controls);
         });
     }
 
-    // ---------------------------------------------------
-    // Touch Joystick (Mobile Only)
-    // ---------------------------------------------------
-    #createTouchControls() {
-        // Joystick wrapper
-        this.joystick = document.createElement("div");
-        this.joystick.className = "touch-joystick";
+    bindTouch() {
+        if (!this.joystick) return;
 
-        // inner thumb
-        this.thumb = document.createElement("div");
-        this.thumb.className = "touch-joystick-thumb";
-
-        this.joystick.appendChild(this.thumb);
-        document.body.appendChild(this.joystick);
-
-        // Nitro Button
-        this.nitroBtn = document.createElement("div");
-        this.nitroBtn.className = "nitro-button";
-        this.nitroBtn.innerHTML = "<img src='assets/nitro_icon.png'>";
-        document.body.appendChild(this.nitroBtn);
-
-        this.#setupJoystickLogic();
-        this.#setupNitroButton();
-    }
-
-    // ---------------------------------------------------
-    // Joystick Logic
-    // ---------------------------------------------------
-    #setupJoystickLogic() {
-        let dragging = false;
-        let startX = 0, startY = 0;
-
-        const maxDist = 50;
+        let touchStartX = 0;
 
         this.joystick.addEventListener("touchstart", e => {
-            const t = e.touches[0];
-            dragging = true;
-            startX = t.clientX;
-            startY = t.clientY;
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            e.preventDefault();
         });
 
-        window.addEventListener("touchmove", e => {
-            if (!dragging) return;
+        this.joystick.addEventListener("touchmove", e => {
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
 
-            const t = e.touches[0];
-            const dx = t.clientX - startX;
-            const dy = t.clientY - startY;
+            this.controls.left = deltaX < -20;
+            this.controls.right = deltaX > 20;
 
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx);
-
-            // clamp inside circle
-            const clampedDist = Math.min(maxDist, dist);
-            const offsetX = Math.cos(angle) * clampedDist;
-            const offsetY = Math.sin(angle) * clampedDist;
-
-            this.thumb.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-
-            // directional input
-            this.left = dx < -20;
-            this.right = dx > 20;
-            this.forward = dy < -10;
+            this.game.setControls(this.controls);
+            e.preventDefault();
         });
 
-        window.addEventListener("touchend", () => {
-            dragging = false;
-            this.thumb.style.transform = "translate(0px, 0px)";
-            this.left = false;
-            this.right = false;
-            this.forward = false;
+        this.joystick.addEventListener("touchend", e => {
+            this.controls.left = false;
+            this.controls.right = false;
+            this.controls.down = false;
+            this.controls.nitro = false;
+            this.game.setControls(this.controls);
+            e.preventDefault();
         });
     }
 
-    // ---------------------------------------------------
-    // Nitro Button Logic
-    // ---------------------------------------------------
-    #setupNitroButton() {
-        this.nitroBtn.addEventListener("touchstart", () => {
-            this.nitro = true;
-        });
-
-        this.nitroBtn.addEventListener("touchend", () => {
-            this.nitro = false;
-        });
+    // optional: expose controls object
+    getControls() {
+        return this.controls;
     }
 }
