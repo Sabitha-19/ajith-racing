@@ -3,71 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajith Kumar Racing Game</title>
+    <title>2D Racing Puzzle Game</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        body {
-            margin: 0;
-            background: #111;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            overflow-x: hidden;
-        }
-        #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            background: #222;
-        }
-        #country-ui {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 10;
-        }
-        #country-ui h2 {
-            margin-bottom: 20px;
-        }
-        #country-ui button {
-            padding: 10px 20px;
-            margin: 5px;
-            font-size: 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            background: linear-gradient(90deg,#ffcc00,#ff66a3);
-            color: #111;
-            font-weight: bold;
-            transition: transform 0.2s;
-        }
-        #country-ui button:hover {
-            transform: scale(1.1);
-        }
-    </style>
 </head>
 <body>
-
-    <!-- Container for racing game canvas -->
+    <!-- Main container -->
     <div id="game-container"></div>
 
     <!-- Scripts -->
-    <script type="module" src="scripts/main.js"></script>
-    <script type="module" src="scripts/TouchControls.js"></script>
-    <script type="module" src="scripts/Racer.js"></script>
-    <script type="module" src="scripts/Track.js"></script>
-    <script type="module" src="scripts/Enemy.js"></script>
-    <script type="module" src="scripts/PowerUp.js"></script>
-    <script type="module" src="scripts/CollisionManager.js"></script>
-    <script type="module" src="scripts/Camera.js"></script>
-    <script type="module" src="scripts/RacerGame.js"></script>
-    <script type="module" src="scripts/UIManager.js"></script>
-    <script type="module" src="scripts/puzzle.js"></script>
+    <script type="module">
+        import Puzzle from './scripts/puzzle.js';
+        import RacerGame from './scripts/RacerGame.js';
+        import TouchControls from './scripts/TouchControls.js';
+        import UIManager from './scripts/UIManager.js';
 
+        // Load assets (placeholders, replace with actual images)
+        const assets = {};
+        const assetPaths = {
+            car: 'assets/car.png',
+            enemy: 'assets/enemy.png',
+            road: 'assets/road.png',
+            start: 'assets/start.png',
+            finish: 'assets/finish.png',
+            flame: 'assets/flame.png',
+            coin: 'assets/coin.png',
+            nitro: 'assets/nitro.png',
+            health: 'assets/health.png',
+            joystick: 'assets/joystick.png',
+        };
+
+        const loadAssets = async () => {
+            const promises = [];
+            for (const key in assetPaths) {
+                const img = new Image();
+                img.src = assetPaths[key];
+                assets[key] = img;
+                promises.push(new Promise(res => img.onload = res));
+            }
+            await Promise.all(promises);
+        };
+
+        const startGame = async () => {
+            await loadAssets();
+
+            // Step 1: Puzzle
+            const puzzleCanvas = document.createElement('canvas');
+            document.getElementById('game-container').appendChild(puzzleCanvas);
+
+            const puzzle = new Puzzle({
+                canvas: puzzleCanvas,
+                rows: 7,
+                cols: 7,
+                tileSize: 64,
+                timeLimitSec: 45,
+                progressTarget: 6
+            }, () => {
+                // Puzzle complete → start country selection or race
+                puzzle.destroy();
+
+                // Step 2: Racing game container
+                const gameContainer = document.getElementById('game-container');
+                gameContainer.innerHTML = ''; // clear
+                const canvas = document.createElement('canvas');
+                gameContainer.appendChild(canvas);
+
+                // Initialize RacerGame
+                const game = new RacerGame({
+                    canvas,
+                    assets
+                });
+
+                // Touch / keyboard controls
+                const controls = new TouchControls(canvas);
+                game.setControls(controls);
+
+                // UI
+                const ui = new UIManager(game);
+                ui.init();
+
+                game.start();
+            });
+        };
+
+        startGame();
+    </script>
 </body>
 </html>
