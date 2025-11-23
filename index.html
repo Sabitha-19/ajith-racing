@@ -1,86 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>2D Racing Game</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajith Kumar Racing Game</title>
+    <link rel="stylesheet" href="style.css">
     <style>
         body {
             margin: 0;
-            overflow: hidden;
             background: #111;
+            color: #fff;
             font-family: Arial, sans-serif;
+            overflow-x: hidden;
         }
         #game-container {
             position: relative;
             width: 100vw;
             height: 100vh;
+            overflow: hidden;
+            background: #222;
         }
-        canvas {
-            display: block;
+        #country-ui {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
             width: 100%;
             height: 100%;
-            background: #111;
+            background: rgba(0,0,0,0.9);
+            z-index: 10;
         }
-        button {
-            padding: 8px 16px;
+        #country-ui h2 {
+            margin-bottom: 20px;
+        }
+        #country-ui button {
+            padding: 10px 20px;
+            margin: 5px;
             font-size: 16px;
+            border: none;
+            border-radius: 6px;
             cursor: pointer;
+            background: linear-gradient(90deg,#ffcc00,#ff66a3);
+            color: #111;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        #country-ui button:hover {
+            transform: scale(1.1);
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="game-canvas"></canvas>
-    </div>
 
-    <script type="module">
-        import RacerGame from './scripts/RacerGame.js';
-        import TouchControls from './scripts/TouchControls.js';
-        import UIManager from './scripts/UIManager.js';
+    <!-- Container for racing game canvas -->
+    <div id="game-container"></div>
 
-        // Load images
-        const assets = {};
-        const assetList = {
-            car: 'assets/car.png',
-            enemy: 'assets/enemy.png',
-            flame: 'assets/flame.png',
-            coin: 'assets/coin.png',
-            nitro: 'assets/nitro.png',
-            health: 'assets/health.png',
-            countries: ['India', 'USA', 'UK', 'Japan'] // example, can load JSON
-        };
+    <!-- Scripts -->
+    <script type="module" src="scripts/main.js"></script>
+    <script type="module" src="scripts/TouchControls.js"></script>
+    <script type="module" src="scripts/Racer.js"></script>
+    <script type="module" src="scripts/Track.js"></script>
+    <script type="module" src="scripts/Enemy.js"></script>
+    <script type="module" src="scripts/PowerUp.js"></script>
+    <script type="module" src="scripts/CollisionManager.js"></script>
+    <script type="module" src="scripts/Camera.js"></script>
+    <script type="module" src="scripts/RacerGame.js"></script>
+    <script type="module" src="scripts/UIManager.js"></script>
+    <script type="module" src="scripts/puzzle.js"></script>
 
-        for (const key in assetList) {
-            if (Array.isArray(assetList[key])) {
-                assets[key] = assetList[key]; // for countries
-            } else {
-                const img = new Image();
-                img.src = assetList[key];
-                assets[key] = img;
-            }
-        }
-
-        // Canvas setup
-        const canvas = document.getElementById('game-canvas');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        // Initialize game
-        const game = new RacerGame(canvas, assets);
-
-        // Initialize controls
-        const controls = new TouchControls(game);
-
-        // Initialize UI Manager
-        const uiManager = new UIManager(game, assets);
-
-        // Resize canvas dynamically
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-
-    </script>
 </body>
 </html>
