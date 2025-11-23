@@ -1,102 +1,103 @@
-// scripts/UIManager.js
-export default class UIManager {
-    constructor(racer) {
-        this.racer = racer; // Link to player for HUD info
-        this.debugMode = true; // Toggle debug UI
-        this.createDebugUI();
+// ===========================================
+//               UI MANAGER
+// ===========================================
+
+export class UIManager {
+    constructor() {
+        // DOM elements
+        this.puzzleContainer = document.getElementById("puzzle-container");
+        this.countryMenu = document.getElementById("country-menu");
+        this.puzzleCompleteBanner = document.getElementById("puzzle-complete");
+
+        this.countryMenuVisible = false;
     }
 
-    // ================================
-    // HUD DRAWING
-    // ================================
-    drawHUD(ctx) {
-        ctx.fillStyle = "white";
-        ctx.font = "22px Arial";
-        ctx.fillText("Speed: " + Math.round(this.racer.speed), 20, 40);
+    // -------------------------------------------------
+    //                 PUZZLE UI
+    // -------------------------------------------------
 
-        // Coins
-        ctx.fillText("Coins: " + this.racer.coins, 20, 70);
-
-        // Health bar
-        ctx.fillStyle = "red";
-        ctx.fillRect(20, 100, 200, 20);
-
-        ctx.fillStyle = "lime";
-        ctx.fillRect(20, 100, (this.racer.health / 100) * 200, 20);
-
-        ctx.strokeStyle = "white";
-        ctx.strokeRect(20, 100, 200, 20);
-
-        // Nitro bar
-        ctx.fillStyle = "blue";
-        ctx.fillRect(20, 130, (this.racer.nitroTime / this.racer.nitroMax) * 200, 10);
-        ctx.strokeStyle = "white";
-        ctx.strokeRect(20, 130, 200, 10);
+    showPuzzle() {
+        if (this.puzzleContainer) {
+            this.puzzleContainer.style.display = "flex";
+        }
     }
 
-    // ================================
-    // DEBUG UI (SPAWN, RESET)
-    // ================================
-    createDebugUI() {
-        if (!this.debugMode) return;
-
-        // Spawn Enemy button
-        this.spawnBtn = document.createElement("button");
-        this.spawnBtn.innerText = "Spawn Enemy";
-        this.spawnBtn.style.position = "absolute";
-        this.spawnBtn.style.top = "10px";
-        this.spawnBtn.style.right = "10px";
-        document.body.appendChild(this.spawnBtn);
-
-        this.spawnBtn.onclick = () => {
-            if (window.enemies) {
-                const enemyImage = new Image();
-                enemyImage.src = "assets/enemy.png";
-                window.enemies.push(
-                    new (window.EnemyRacer || window.Racer)(enemyImage, this.racer.x + 100, this.racer.y + 100)
-                );
-            }
-        };
-
-        // Reset Race button
-        this.resetBtn = document.createElement("button");
-        this.resetBtn.innerText = "Reset Race";
-        this.resetBtn.style.position = "absolute";
-        this.resetBtn.style.top = "50px";
-        this.resetBtn.style.right = "10px";
-        document.body.appendChild(this.resetBtn);
-
-        this.resetBtn.onclick = () => {
-            if (window.racer && window.track) {
-                window.racer.x = window.track.startX || 0;
-                window.racer.y = window.track.startY || 0;
-                window.racer.speed = 0;
-                window.racer.health = 100;
-                window.enemies = [];
-            }
-        };
+    hidePuzzle() {
+        if (this.puzzleContainer) {
+            this.puzzleContainer.style.display = "none";
+        }
     }
 
-    // ================================
-    // PUZZLE SCREEN / COUNTRY MENU
-    // ================================
-    showPuzzleScreen() {
-        const puzzleScreen = document.getElementById("puzzle-screen");
-        puzzleScreen.style.display = "flex";
+    // -------------------------------------------------
+    //       PUZZLE COMPLETE — ANIMATED CELEBRATION
+    // -------------------------------------------------
+
+    showPuzzleCompleteAnimation(callback) {
+        if (!this.puzzleCompleteBanner) return callback();
+
+        this.puzzleCompleteBanner.style.opacity = 0;
+        this.puzzleCompleteBanner.style.display = "block";
+
+        setTimeout(() => {
+            this.puzzleCompleteBanner.style.transition = "0.6s ease";
+            this.puzzleCompleteBanner.style.transform = "scale(1)";
+            this.puzzleCompleteBanner.style.opacity = 1;
+        }, 50);
+
+        // Fade-out after 1.3 seconds
+        setTimeout(() => {
+            this.puzzleCompleteBanner.style.opacity = 0;
+            this.puzzleCompleteBanner.style.transform = "scale(0.7)";
+        }, 1300);
+
+        // Fully remove from UI and trigger callback
+        setTimeout(() => {
+            this.puzzleCompleteBanner.style.display = "none";
+            if (callback) callback();
+        }, 1900);
     }
 
-    hidePuzzleScreen() {
-        const puzzleScreen = document.getElementById("puzzle-screen");
-        puzzleScreen.style.display = "none";
-    }
+    // -------------------------------------------------
+    //                COUNTRY MENU UI
+    // -------------------------------------------------
 
     showCountryMenu() {
-        const countryMenu = document.getElementById("countryMenu");
-        countryMenu.style.display = "block";
+        if (this.countryMenu) {
+            this.countryMenu.style.display = "flex";
+            this.countryMenuVisible = true;
+        }
     }
 
     hideCountryMenu() {
-        const countryMenu = document.getElementById("countryMenu");
-        countryMenu.style.display = "none";
+        if (this.countryMenu) {
+            this.countryMenu.style.display = "none";
+            this.countryMenuVisible = false;
+        }
+    }
+
+    // -------------------------------------------------
+    //         RACING UI / HUD (OPTIONAL)
+    // -------------------------------------------------
+
+    showHUD() {
+        const hud = document.getElementById("hud");
+        if (hud) hud.style.display = "block";
+    }
+
+    hideHUD() {
+        const hud = document.getElementById("hud");
+        if (hud) hud.style.display = "none";
+    }
+
+    showPickupEffect(type) {
+        const hud = document.getElementById("hud-message");
+        if (!hud) return;
+
+        hud.innerText = `Picked ${type}!`;
+        hud.style.opacity = 1;
+
+        setTimeout(() => {
+            hud.style.opacity = 0;
+        }, 1000);
     }
 }
