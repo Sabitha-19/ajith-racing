@@ -1,114 +1,99 @@
 // main.js
-import RacerGame from "./scripts/RacerGame.js";
-import Track from "./scripts/Track.js";
-import Racer from "./scripts/Racer.js";
-import Enemy from "./scripts/Enemy.js";
-import PowerUp from "./scripts/PowerUp.js";
-import Camera from "./scripts/Camera.js";
-import CollisionManager from "./scripts/CollisionManager.js";
-import TouchControls from "./scripts/TouchControls.js";
-import UIManager from "./scripts/UIManager.js";
-import Puzzle from "./scripts/puzzle.js";
 
-// ----------------------------
-// Initialize Canvas and UI
-// ----------------------------
-const gameContainer = document.getElementById("game-container");
+import Puzzle from './scripts/puzzle.js';
+import RacerGame from './scripts/RacerGame.js';
+import TouchControls from './scripts/TouchControls.js';
+import UIManager from './scripts/UIManager.js';
 
-// Create main canvas
-const canvas = document.createElement("canvas");
-canvas.id = "game-canvas";
-canvas.width = 960;
-canvas.height = 540;
-gameContainer.appendChild(canvas);
+// --- Global Variables ---
+const gameContainer = document.getElementById('game-container');
+let gameCanvas;
+let uiManager;
+const assets = {}; // Store loaded image assets
 
-// Initialize UI Manager
-const uiManager = new UIManager(gameContainer);
+// Define asset paths (must match the files in the 'assets' folder)
+const assetPaths = {
+    car: 'assets/car.png',
+    enemy: 'assets/enemy.png',
+    coin: 'assets/coin.png',
+    nitro: 'assets/nitro.png',
+    health: 'assets/health.png',
+    // ... add all required assets here
+};
 
-// ----------------------------
-// Show Puzzle first
-// ----------------------------
-const puzzle = new Puzzle({
-    canvas: canvas,
-    rows: 7,
-    cols: 7,
-    tileSize: 64,
-    timeLimitSec: 45,
-    progressTarget: 6
-}, () => {
-    // When puzzle is complete, start the racing game
-    startRacingGame();
-});
+// --- Asset Loading Function ---
+const loadAssets = async () => {
+    const promises = [];
+    for (const key in assetPaths) {
+        const img = new Image();
+        img.src = assetPaths[key];
+        assets[key] = img;
+        promises.push(new Promise(res => img.onload = res));
+    }
+    await Promise.all(promises);
+    console.log("Assets loaded.");
+};
 
-// ----------------------------
-// Racing Game Setup
-// ----------------------------
-let racingGame;
+// --- Canvas Initialization ---
+const initCanvas = () => {
+    if (gameCanvas) gameCanvas.remove();
+    
+    gameCanvas = document.createElement('canvas');
+    gameCanvas.id = 'game-canvas';
+    gameCanvas.width = 960;
+    gameCanvas.height = 720; 
+    gameContainer.appendChild(gameCanvas);
+};
 
-function startRacingGame() {
-    // Clear canvas or reset for racing
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// --- Game Flow Functions ---
 
-    // Initialize track
-    const track = new Track(canvas.width, canvas.height);
-
-    // Initialize player racer
-    const player = new Racer({
-        x: canvas.width / 2,
-        y: canvas.height - 100,
-        speed: 0,
-        maxSpeed: 8
+const startRacingGame = () => {
+    console.log("Starting Racing Game...");
+    initCanvas(); 
+    
+    const game = new RacerGame({
+        canvas: gameCanvas,
+        assets
     });
 
-    // Initialize enemies
-    const enemies = [];
-    for (let i = 0; i < 5; i++) {
-        enemies.push(new Enemy({ x: Math.random() * canvas.width, y: -Math.random() * 600 }));
-    }
+    const controls = new TouchControls(gameCanvas);
+    game.setControls(controls); 
+    
+    if (uiManager) uiManager.destroy();
+    uiManager = new UIManager(gameContainer);
+    uiManager.initRaceUI(game);
 
-    // Initialize power-ups
-    const powerUps = [];
-    for (let i = 0; i < 3; i++) {
-        powerUps.push(new PowerUp({ x: Math.random() * canvas.width, y: -Math.random() * 600 }));
-    }
+    game.start();
+};
 
-    // Initialize camera
-    const camera = new Camera(player, canvas);
-
-    // Collision manager
-    const collisionManager = new CollisionManager(player, enemies, powerUps);
-
-    // Touch controls
-    const touchControls = new TouchControls(player);
-
-    // Initialize racing game engine
-    racingGame = new RacerGame({
-        canvas,
-        player,
-        track,
-        enemies,
-        powerUps,
-        camera,
-        collisionManager,
-        uiManager
-    });
-
-    // Start game loop
-    racingGame.start();
-}
-
-// ----------------------------
-// UI Buttons Example (optional)
-// ----------------------------
-uiManager.createButton("Restart Puzzle", () => {
-    puzzle.destroy();
-    new Puzzle({
-        canvas: canvas,
+const startPuzzle = () => {
+    console.log("Starting Puzzle...");
+    initCanvas();
+    
+    const puzzle = new Puzzle({
+        canvas: gameCanvas,
         rows: 7,
         cols: 7,
         tileSize: 64,
         timeLimitSec: 45,
         progressTarget: 6
-    }, () => startRacingGame());
-});
+    }, () => {
+        // Completion callback
+        puzzle.destroy(); 
+        startRacingGame();
+    });
+    
+    puzzle.start();
+};
+
+
+// --- Main Execution Function ---
+const startGame = async () => {
+    await loadAssets();
+    
+    // Start the game flow with the puzzle
+    startPuzzle();
+};
+
+// Start the game initialization process
+startGame();
