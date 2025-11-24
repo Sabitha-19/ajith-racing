@@ -11,13 +11,23 @@
         </div>
 
     <script type="module">
-        // Import modules from the 'scripts' folder
+        // Import modules
         import Puzzle from './scripts/puzzle.js';
         import RacerGame from './scripts/RacerGame.js';
         import TouchControls from './scripts/TouchControls.js';
         import UIManager from './scripts/UIManager.js';
 
-        // --- Asset Loading ---
+        // --- Global State & Configuration ---
+        const gameContainer = document.getElementById('game-container');
+        const gameCanvasId = 'game-canvas';
+        const canvasWidth = 960;
+        const canvasHeight = 720; 
+        
+        let gameCanvas = null;
+        let uiManager = null;
+        let currentPuzzle = null;
+        
+        // Define all required assets for both Puzzle and Race
         const assets = {};
         const assetPaths = {
             car: 'assets/car.png',
@@ -30,95 +40,115 @@
             nitro: 'assets/nitro.png',
             health: 'assets/health.png',
             joystick: 'assets/joystick.png',
+            // Add all puzzle assets here (must match the paths in puzzle.js)
+            candy_red: 'assets/candy_red.png',
+            candy_yellow: 'assets/candy_yellow.png',
+            candy_green: 'assets/candy_green.png',
+            candy_purple: 'assets/candy_purple.png',
+            candy_blue: 'assets/candy_blue.png',
         };
 
+        // --- Asset Loading ---
         const loadAssets = async () => {
             const promises = [];
             for (const key in assetPaths) {
                 const img = new Image();
                 img.src = assetPaths[key];
                 assets[key] = img;
-                // Create a promise that resolves when the image is loaded
                 promises.push(new Promise(res => img.onload = res));
             }
-            // Wait for all images to load before starting the game
             await Promise.all(promises);
+            console.log("All assets loaded successfully.");
         };
         
-        // --- Game Flow Variables ---
-        const gameContainer = document.getElementById('game-container');
-        let gameCanvas;
-        let uiManager;
-
+        // --- Canvas Management ---
         const initCanvas = () => {
-            // Remove previous canvas if it exists
-            if (gameCanvas) gameCanvas.remove();
+            // Remove previous canvas if it exists (e.g., when transitioning from Puzzle)
+            const existingCanvas = document.getElementById(gameCanvasId);
+            if (existingCanvas) existingCanvas.remove();
             
-            // Create and append the main canvas
             gameCanvas = document.createElement('canvas');
-            gameCanvas.id = 'game-canvas';
-            gameCanvas.width = 960;
-            gameCanvas.height = 720; 
-            gameContainer.appendChild(gameCanvas);
-        };
-
-        const startRacingGame = () => {
-            console.log("Starting Racing Game...");
-            initCanvas(); 
+            gameCanvas.id = gameCanvasId;
+            gameCanvas.width = canvasWidth;
+            gameCanvas.height = canvasHeight; 
             
-            // Initialize RacerGame
-            const game = new RacerGame({
-                canvas: gameCanvas,
-                assets
-            });
-
-            // Initialize Controls and link to game
-            const controls = new TouchControls(gameCanvas);
-            // RacerGame polls controls via a method (simplified from original plan)
-            game.setControls(controls); 
-            
-            // Setup UI (HUD, buttons, etc.)
-            if (uiManager) uiManager.destroy();
-            uiManager = new UIManager(gameContainer);
-            uiManager.initRaceUI(game);
-
-            game.start();
+            // The UIManager handles placing the canvas inside its wrapper element 
+            // when the Puzzle or RacerGame is initialized.
+            // For now, we just attach it to the container temporarily until the game starts.
+            gameContainer.appendChild(gameCanvas); 
         };
+        
+        // --- Game Flow Handlers ---
 
         const startPuzzle = () => {
-            console.log("Starting Puzzle...");
-            initCanvas();
+            console.log("Starting Puzzle Mini-Game...");
+            // The Puzzle constructor will re-parent the canvas into its own wrapper
+            // and apply its size. We pass the canvas reference.
             
-            // Initialize Puzzle
-            const puzzle = new Puzzle({
+            if (currentPuzzle) currentPuzzle.destroy();
+            
+            currentPuzzle = new Puzzle({
                 canvas: gameCanvas,
                 rows: 7,
                 cols: 7,
                 tileSize: 64,
                 timeLimitSec: 45,
-                progressTarget: 6
+                progressTarget: 20 // Increased target for a slightly longer game
             }, () => {
-                // Puzzle complete callback → start race
-                puzzle.destroy(); // Cleanup puzzle resources
-                startRacingGame();
+                // Puzzle complete callback
+                if (currentPuzzle) currentPuzzle.destroy();
+                uiManager.showCountryMenu();
+            });
+        };
+
+        const startRacingGame = (countryName) => {
+            console.log(`Starting Racing Game in ${countryName}...`);
+            
+            // We need to re-initialize the canvas here if the puzzle wrapper was used
+            // but since the puzzle destructor removes the wrapper, we might need a clean start.
+            initCanvas(); // Re-initialize the canvas if needed (if Puzzle removed it)
+
+            uiManager.hideCountryMenu();
+            uiManager.showHUD();
+            
+            // Initialize RacerGame
+            const game = new RacerGame({
+                canvas: gameCanvas,
+                assets,
+                country: countryName
+            });
+
+            // Initialize Controls and link to game
+            const controls = new TouchControls(gameCanvas);
+            game.setControls(controls); 
+            
+            // The UIManager needs a way to update the time during the race
+            game.onTimeUpdate = (time) => {
+                uiManager.updateGameTime(time);
+            };
+
+            game.start();
+        };
+
+
+        // --- Initialization ---
+
+        const initGame = async () => {
+            await loadAssets();
+            initCanvas();
+
+            // Initialize UIManager and hook up flow
+            uiManager = new UIManager(gameContainer);
+            uiManager.hookCallbacks({
+                onPlay: startPuzzle, 
+                onSelectCountry: startRacingGame
             });
             
-            // Start the puzzle loop/interaction
-            puzzle.start();
+            // The UIManager is set to automatically show the Main Menu on creation.
         };
 
-
-        const startGame = async () => {
-            console.log("Loading assets...");
-            await loadAssets();
-            console.log("Assets loaded. Starting initial flow (Puzzle)...");
-            
-            // The game flow starts with the puzzle minigame
-            startPuzzle();
-        };
-
-        // Initialize the game when the script runs
-        startGame();
+        // Start the process
+        initGame();
     </script>
 </body>
 </html>
