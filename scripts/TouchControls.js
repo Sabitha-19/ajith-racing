@@ -1,6 +1,5 @@
 // scripts/TouchControls.js
 // Handles player input (keyboard and mobile touch/joystick)
-// Exposes a simple interface: controls = { left, right, down, nitro }
 
 export default class TouchControls {
     constructor(canvas) {
@@ -8,6 +7,7 @@ export default class TouchControls {
         this.controls = {
             left: false,
             right: false,
+            up: false, // Acceleration
             down: false,
             nitro: false
         };
@@ -17,81 +17,79 @@ export default class TouchControls {
     }
 
     _setupKeyboard() {
-        window.addEventListener("keydown", (e) => {
-            switch (e.key) {
+        const updateControl = (key, state) => {
+            switch (key) {
                 case "ArrowLeft":
                 case "a":
-                    this.controls.left = true;
+                    this.controls.left = state;
                     break;
                 case "ArrowRight":
                 case "d":
-                    this.controls.right = true;
+                    this.controls.right = state;
+                    break;
+                case "ArrowUp": // Added acceleration control
+                case "w":
+                    this.controls.up = state;
                     break;
                 case "ArrowDown":
                 case "s":
-                    this.controls.down = true;
+                    this.controls.down = state;
                     break;
                 case " ":
-                    this.controls.nitro = true;
+                    this.controls.nitro = state;
                     break;
             }
-        });
+        };
 
-        window.addEventListener("keyup", (e) => {
-            switch (e.key) {
-                case "ArrowLeft":
-                case "a":
-                    this.controls.left = false;
-                    break;
-                case "ArrowRight":
-                case "d":
-                    this.controls.right = false;
-                    break;
-                case "ArrowDown":
-                case "s":
-                    this.controls.down = false;
-                    break;
-                case " ":
-                    this.controls.nitro = false;
-                    break;
-            }
-        });
+        window.addEventListener("keydown", (e) => updateControl(e.key, true));
+        window.addEventListener("keyup", (e) => updateControl(e.key, false));
     }
 
     _setupTouch() {
         if (!this.canvas) return;
 
-        let startX = 0;
-        let startY = 0;
-
-        this.canvas.addEventListener("pointerdown", (e) => {
-            startX = e.clientX;
-            startY = e.clientY;
-        });
-
-        this.canvas.addEventListener("pointermove", (e) => {
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-
-            // horizontal swipe detection
-            this.controls.left = dx < -20;
-            this.controls.right = dx > 20;
-
-            // down swipe
-            this.controls.down = dy > 20;
-        });
-
-        this.canvas.addEventListener("pointerup", (e) => {
+        // Use canvas width/height to define control zones
+        const canvasRect = this.canvas.getBoundingClientRect();
+        
+        const handleTouch = (e, state) => {
+            e.preventDefault(); 
+            this.controls.up = false;
             this.controls.left = false;
             this.controls.right = false;
-            this.controls.down = false;
-            this.controls.nitro = false;
-        });
+            this.controls.nitro = false; 
+            
+            // Simplified touch: 
+            // Tap left half = Left + Accelerate
+            // Tap right half = Right + Accelerate
+            // Tap top = Nitro (optional)
 
-        // optional tap for nitro
-        this.canvas.addEventListener("click", (e) => {
-            this.controls.nitro = true;
-            setTimeout(() => { this.controls.nitro = false; }, 200);
+            for (let i = 0; i < e.touches.length; i++) {
+                const touchX = e.touches[i].clientX - canvasRect.left;
+
+                if (state) {
+                    if (touchX < canvasRect.width / 2) {
+                        this.controls.left = true;
+                        this.controls.up = true;
+                    } else {
+                        this.controls.right = true;
+                        this.controls.up = true;
+                    }
+                }
+            }
+            
+            // Simple Nitro: if two fingers are down, activate nitro
+            if (e.touches.length >= 2) {
+                this.controls.nitro = true;
+            }
+        };
+
+        this.canvas.addEventListener("touchstart", (e) => handleTouch(e, true));
+        this.canvas.addEventListener("touchmove", (e) => handleTouch(e, true));
+        this.canvas.addEventListener("touchend", (e) => {
+            this.controls.up = false;
+            this.controls.left = false;
+            this.controls.right = false;
+            this.controls.nitro = false;
         });
     }
 
