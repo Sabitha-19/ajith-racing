@@ -6,6 +6,11 @@ body {
     color: #fff;
     font-family: Arial, sans-serif;
     overflow-x: hidden;
+    /* Center content vertically for better presentation */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
 
 /* Game container */
@@ -15,18 +20,24 @@ body {
     max-width: 960px;
     margin: 0 auto;
     text-align: center;
+    background-color: #1a1a1a; /* Dark background for the container */
+    padding: 10px;
+    border-radius: 15px;
 }
 
 /* Canvas styling */
 canvas {
     display: block;
     margin: 20px auto;
-    background-color: #222; /* racing road / puzzle board background fallback */
+    background-color: #222; /* Racing road / puzzle board background fallback */
     border-radius: 12px;
     box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    transition: all 0.3s ease-in-out; /* Smooth transition for responsiveness */
 }
 
-/* Puzzle UI overlay */
+/* --- Puzzle UI Overlay Styling --- */
+
+/* Puzzle wrapper (used to position UI elements relative to the canvas) */
 #game-container .wrapper {
     position: relative;
     display: inline-block;
@@ -70,10 +81,11 @@ canvas {
     display: flex;
     align-items: center;
     justify-content: center;
-    pointer-events: none;
+    pointer-events: none; /* Allows clicks to pass through */
 }
 
-/* Racer game UI */
+/* --- Racer Game UI Elements (if UIManager places them externally) --- */
+
 .race-ui {
     position: absolute;
     top: 10px;
@@ -83,7 +95,7 @@ canvas {
     z-index: 10;
 }
 
-/* On-screen controls for touch */
+/* On-screen controls for touch (Placeholder area for joysticks/buttons) */
 .touch-controls {
     position: absolute;
     bottom: 20px;
@@ -102,7 +114,7 @@ canvas {
     touch-action: none;
 }
 
-/* Racer HUD */
+/* Racer HUD (often managed by UIManager) */
 #player-stats {
     position: absolute;
     bottom: 20px;
@@ -111,6 +123,8 @@ canvas {
     font-size: 14px;
     z-index: 10;
 }
+
+/* --- Menu and Button Styling --- */
 
 /* Simple button styling for menus */
 button {
@@ -123,6 +137,7 @@ button {
     font-size: 16px;
     cursor: pointer;
     transition: transform 0.15s ease;
+    margin: 5px; /* Added margin for stacking */
 }
 
 button:hover {
@@ -131,12 +146,20 @@ button:hover {
 
 /* Mobile responsive tweaks */
 @media (max-width: 600px) {
+    /* Make canvas scale down on smaller screens */
     canvas {
         width: 95%;
         height: auto;
     }
+    
+    /* Reduce size of touch controls for mobile screens */
     .touch-controls img {
         width: 48px;
         height: 48px;
+    }
+    
+    /* Center the game container itself */
+    #game-container {
+        padding: 5px;
     }
 }
