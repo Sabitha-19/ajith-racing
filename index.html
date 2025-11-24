@@ -11,11 +11,11 @@
         </div>
 
     <script type="module">
-        // Import modules
+        // Import modules from the 'scripts' folder
         import Puzzle from './scripts/puzzle.js';
         import RacerGame from './scripts/RacerGame.js';
         import TouchControls from './scripts/TouchControls.js';
-        import UIManager from './scripts/UIManager.js'; // Assuming UIManager handles general menus
+        import UIManager from './scripts/UIManager.js';
 
         // --- Asset Loading ---
         const assets = {};
@@ -38,29 +38,32 @@
                 const img = new Image();
                 img.src = assetPaths[key];
                 assets[key] = img;
+                // Create a promise that resolves when the image is loaded
                 promises.push(new Promise(res => img.onload = res));
             }
-            // Wait for all images to load
+            // Wait for all images to load before starting the game
             await Promise.all(promises);
         };
         
-        // --- Game Flow ---
+        // --- Game Flow Variables ---
         const gameContainer = document.getElementById('game-container');
         let gameCanvas;
         let uiManager;
 
         const initCanvas = () => {
+            // Remove previous canvas if it exists
             if (gameCanvas) gameCanvas.remove();
             
+            // Create and append the main canvas
             gameCanvas = document.createElement('canvas');
             gameCanvas.id = 'game-canvas';
             gameCanvas.width = 960;
-            gameCanvas.height = 720; // Increase height for better view
+            gameCanvas.height = 720; 
             gameContainer.appendChild(gameCanvas);
         };
 
         const startRacingGame = () => {
-            // Re-initialize canvas for clean start
+            console.log("Starting Racing Game...");
             initCanvas(); 
             
             // Initialize RacerGame
@@ -71,19 +74,22 @@
 
             // Initialize Controls and link to game
             const controls = new TouchControls(gameCanvas);
-            game.setControls(controls);
+            // RacerGame polls controls via a method (simplified from original plan)
+            game.setControls(controls); 
             
-            // Re-init UI Manager if needed, or update its reference to the running game
-            if (uiManager) uiManager.destroy(); // Clear old UI
+            // Setup UI (HUD, buttons, etc.)
+            if (uiManager) uiManager.destroy();
             uiManager = new UIManager(gameContainer);
-            uiManager.initRaceUI(game); // Assuming UIManager has a method to display the race HUD
+            uiManager.initRaceUI(game);
 
             game.start();
         };
 
         const startPuzzle = () => {
+            console.log("Starting Puzzle...");
             initCanvas();
             
+            // Initialize Puzzle
             const puzzle = new Puzzle({
                 canvas: gameCanvas,
                 rows: 7,
@@ -92,12 +98,12 @@
                 timeLimitSec: 45,
                 progressTarget: 6
             }, () => {
-                // Puzzle complete → start race
-                // We manually destroy/remove the puzzle canvas/listeners if the class doesn't do it.
-                // For simplicity, we just proceed to startRacingGame.
+                // Puzzle complete callback → start race
+                puzzle.destroy(); // Cleanup puzzle resources
                 startRacingGame();
             });
-            // The Puzzle class needs an entry method, e.g., puzzle.start()
+            
+            // Start the puzzle loop/interaction
             puzzle.start();
         };
 
@@ -105,12 +111,13 @@
         const startGame = async () => {
             console.log("Loading assets...");
             await loadAssets();
-            console.log("Assets loaded. Starting puzzle...");
+            console.log("Assets loaded. Starting initial flow (Puzzle)...");
             
-            // Start the flow with the puzzle
+            // The game flow starts with the puzzle minigame
             startPuzzle();
         };
 
+        // Initialize the game when the script runs
         startGame();
     </script>
 </body>
