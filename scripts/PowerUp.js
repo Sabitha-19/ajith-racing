@@ -8,55 +8,43 @@ export default class PowerUp {
         this.position = position;
         this.sprite = sprite;
 
-        // size
         this.width = 60;
         this.height = 60;
-
-        // collected flag
         this.collected = false;
     }
 
     update(delta = 1 / 60, playerPosition = 0) {
-        // simple: if player passes power-up, can be considered for removal
-        if (playerPosition > this.position + 200) {
+        // Simple logic for removing power-ups player has passed
+        if (playerPosition > this.position + 100) {
             this.collected = true;
         }
     }
 
-    checkCollision(player) {
-        if (this.collected) return false;
-
-        // simple lane + distance collision
-        if (Math.abs(this.lane - player.lane) < 0.5) {
-            if (Math.abs(this.position - player.position) < player.height / 2) {
-                this.collected = true;
-                player.applyPowerUp(this.type);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    draw(ctx, track) {
+    draw(ctx, camera, assets) {
         if (this.collected) return;
-        const screen = track.project(this.position, this.lane);
-        if (!screen) return;
-        const { x, y, scale } = screen;
+        
+        const screen = camera.project(0, this.position);
+        
+        // Calculate X position based on lane in world coordinates
+        const laneWidth = 80;
+        const worldX = screen.x + this.lane * laneWidth;
+        const screenY = screen.y;
 
         ctx.save();
-        ctx.translate(x, y);
-        ctx.scale(scale, scale);
+        ctx.translate(worldX, screenY);
 
         const drawW = this.width;
         const drawH = this.height;
+        
+        const img = assets[this.type];
 
-        if (this.sprite && this.sprite.complete) {
-            ctx.drawImage(this.sprite, -drawW / 2, -drawH / 2, drawW, drawH);
+        if (img && img.complete) {
+            ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
         } else {
             // fallback visual
             ctx.fillStyle = this.type === "coin" ? "#ffcc00" :
-                            this.type === "nitro" ? "#ff5500" :
-                            "#33ff33";
+                             this.type === "nitro" ? "#00FFFF" : // Cyan for nitro
+                             "#33ff33"; // Green for health
             ctx.beginPath();
             ctx.arc(0, 0, drawW / 2, 0, Math.PI * 2);
             ctx.fill();
@@ -65,4 +53,3 @@ export default class PowerUp {
         ctx.restore();
     }
 }
-
