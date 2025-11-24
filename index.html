@@ -7,17 +7,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Main container -->
-    <div id="game-container"></div>
+    <div id="game-container">
+        </div>
 
-    <!-- Scripts -->
     <script type="module">
+        // Import modules
         import Puzzle from './scripts/puzzle.js';
         import RacerGame from './scripts/RacerGame.js';
         import TouchControls from './scripts/TouchControls.js';
-        import UIManager from './scripts/UIManager.js';
+        import UIManager from './scripts/UIManager.js'; // Assuming UIManager handles general menus
 
-        // Load assets (placeholders, replace with actual images)
+        // --- Asset Loading ---
         const assets = {};
         const assetPaths = {
             car: 'assets/car.png',
@@ -40,49 +40,75 @@
                 assets[key] = img;
                 promises.push(new Promise(res => img.onload = res));
             }
+            // Wait for all images to load
             await Promise.all(promises);
         };
+        
+        // --- Game Flow ---
+        const gameContainer = document.getElementById('game-container');
+        let gameCanvas;
+        let uiManager;
 
-        const startGame = async () => {
-            await loadAssets();
+        const initCanvas = () => {
+            if (gameCanvas) gameCanvas.remove();
+            
+            gameCanvas = document.createElement('canvas');
+            gameCanvas.id = 'game-canvas';
+            gameCanvas.width = 960;
+            gameCanvas.height = 720; // Increase height for better view
+            gameContainer.appendChild(gameCanvas);
+        };
 
-            // Step 1: Puzzle
-            const puzzleCanvas = document.createElement('canvas');
-            document.getElementById('game-container').appendChild(puzzleCanvas);
+        const startRacingGame = () => {
+            // Re-initialize canvas for clean start
+            initCanvas(); 
+            
+            // Initialize RacerGame
+            const game = new RacerGame({
+                canvas: gameCanvas,
+                assets
+            });
 
+            // Initialize Controls and link to game
+            const controls = new TouchControls(gameCanvas);
+            game.setControls(controls);
+            
+            // Re-init UI Manager if needed, or update its reference to the running game
+            if (uiManager) uiManager.destroy(); // Clear old UI
+            uiManager = new UIManager(gameContainer);
+            uiManager.initRaceUI(game); // Assuming UIManager has a method to display the race HUD
+
+            game.start();
+        };
+
+        const startPuzzle = () => {
+            initCanvas();
+            
             const puzzle = new Puzzle({
-                canvas: puzzleCanvas,
+                canvas: gameCanvas,
                 rows: 7,
                 cols: 7,
                 tileSize: 64,
                 timeLimitSec: 45,
                 progressTarget: 6
             }, () => {
-                // Puzzle complete → start country selection or race
-                puzzle.destroy();
-
-                // Step 2: Racing game container
-                const gameContainer = document.getElementById('game-container');
-                gameContainer.innerHTML = ''; // clear
-                const canvas = document.createElement('canvas');
-                gameContainer.appendChild(canvas);
-
-                // Initialize RacerGame
-                const game = new RacerGame({
-                    canvas,
-                    assets
-                });
-
-                // Touch / keyboard controls
-                const controls = new TouchControls(canvas);
-                game.setControls(controls);
-
-                // UI
-                const ui = new UIManager(game);
-                ui.init();
-
-                game.start();
+                // Puzzle complete → start race
+                // We manually destroy/remove the puzzle canvas/listeners if the class doesn't do it.
+                // For simplicity, we just proceed to startRacingGame.
+                startRacingGame();
             });
+            // The Puzzle class needs an entry method, e.g., puzzle.start()
+            puzzle.start();
+        };
+
+
+        const startGame = async () => {
+            console.log("Loading assets...");
+            await loadAssets();
+            console.log("Assets loaded. Starting puzzle...");
+            
+            // Start the flow with the puzzle
+            startPuzzle();
         };
 
         startGame();
