@@ -11,13 +11,11 @@
         </div>
 
     <script type="module">
-        // Import modules
         import Puzzle from './scripts/puzzle.js';
         import RacerGame from './scripts/RacerGame.js';
         import TouchControls from './scripts/TouchControls.js';
         import UIManager from './scripts/UIManager.js';
 
-        // --- Global State & Configuration ---
         const gameContainer = document.getElementById('game-container');
         const gameCanvasId = 'game-canvas';
         const canvasWidth = 960;
@@ -26,44 +24,86 @@
         let gameCanvas = null;
         let uiManager = null;
         let currentPuzzle = null;
+        let racerGame = null;
         
-        // Define all required assets for both Puzzle and Race
         const assets = {};
+        
+        // --- FINAL CORRECTED ASSET PATHS ---
         const assetPaths = {
-            car: 'assets/car.png',
+            // IMAGES (assets/ folder)
+            car: 'assets/car.png', 
             enemy: 'assets/enemy.png',
             road: 'assets/road.png',
-            start: 'assets/start.png',
-            finish: 'assets/finish.png',
-            flame: 'assets/flame.png',
             coin: 'assets/coin.png',
-            nitro: 'assets/nitro.png',
-            health: 'assets/health.png',
-            joystick: 'assets/joystick.png',
-            // Add all puzzle assets here (must match the paths in puzzle.js)
+            
+            // NOTE: Using .jpg extensions for these two files, as per your uploads
+            health: 'assets/health.png.jpg', 
+            nitro_powerup: 'assets/nitro.png.jpg', 
+
+            // Puzzle assets - PNGs
             candy_red: 'assets/candy_red.png',
             candy_yellow: 'assets/candy_yellow.png',
             candy_green: 'assets/candy_green.png',
             candy_purple: 'assets/candy_purple.png',
             candy_blue: 'assets/candy_blue.png',
+            
+            // AUDIO (sound/ folder)
+            audio_nitro: 'sound/nitro.mp3',
+            audio_crash: 'sound/crash.mp3',
+            audio_drift: 'sound/drift.mp3',
+            audio_engine: 'sound/engine.mp3',
+            audio_brake: 'sound/brake.mp3',
         };
+        // --- END OF ASSET PATHS ---
 
-        // --- Asset Loading ---
+        // --- Asset Loading (Handles PNG/JPG and MP3) ---
         const loadAssets = async () => {
             const promises = [];
             for (const key in assetPaths) {
-                const img = new Image();
-                img.src = assetPaths[key];
-                assets[key] = img;
-                promises.push(new Promise(res => img.onload = res));
+                const path = assetPaths[key];
+                let loadPromise;
+
+                // Handle Images (.png or .jpg)
+                if (path.endsWith('.png') || path.endsWith('.jpg')) {
+                    const img = new Image();
+                    img.src = path;
+                    assets[key] = img;
+                    loadPromise = new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = () => reject(new Error(`Failed to load IMAGE: ${path}`));
+                    });
+                } 
+                // Handle Audio (.mp3)
+                else if (path.endsWith('.mp3') || path.endsWith('.wav')) {
+                    const audio = new Audio();
+                    audio.src = path;
+                    assets[key] = audio;
+                    loadPromise = new Promise((resolve, reject) => {
+                        audio.addEventListener('canplaythrough', resolve, { once: true });
+                        audio.addEventListener('error', () => reject(new Error(`Failed to load AUDIO: ${path}`)), { once: true });
+                        audio.load();
+                        setTimeout(resolve, 500); 
+                    });
+                } else {
+                    continue; 
+                }
+                
+                promises.push(loadPromise);
             }
-            await Promise.all(promises);
-            console.log("All assets loaded successfully.");
+            
+            console.log("Starting asset loading...");
+            try {
+                await Promise.all(promises);
+                console.log("All assets loaded successfully.");
+            } catch (error) {
+                console.error("Asset loading failed:", error.message);
+                gameContainer.innerHTML = `<h1 style="color: red; text-align: center;">ERROR: Missing Asset. Check console for 404 errors.</h1>`;
+                throw error;
+            }
         };
         
-        // --- Canvas Management ---
+        // --- Game Flow Handlers ---
         const initCanvas = () => {
-            // Remove previous canvas if it exists (e.g., when transitioning from Puzzle)
             const existingCanvas = document.getElementById(gameCanvasId);
             if (existingCanvas) existingCanvas.remove();
             
@@ -72,82 +112,74 @@
             gameCanvas.width = canvasWidth;
             gameCanvas.height = canvasHeight; 
             
-            // The UIManager handles placing the canvas inside its wrapper element 
-            // when the Puzzle or RacerGame is initialized.
-            // For now, we just attach it to the container temporarily until the game starts.
             gameContainer.appendChild(gameCanvas); 
         };
         
-        // --- Game Flow Handlers ---
-
         const startPuzzle = () => {
-            console.log("Starting Puzzle Mini-Game...");
-            // The Puzzle constructor will re-parent the canvas into its own wrapper
-            // and apply its size. We pass the canvas reference.
-            
+            initCanvas();
             if (currentPuzzle) currentPuzzle.destroy();
             
             currentPuzzle = new Puzzle({
                 canvas: gameCanvas,
+                assets: assets,
                 rows: 7,
                 cols: 7,
                 tileSize: 64,
                 timeLimitSec: 45,
-                progressTarget: 20 // Increased target for a slightly longer game
+                progressTarget: 20
             }, () => {
-                // Puzzle complete callback
                 if (currentPuzzle) currentPuzzle.destroy();
                 uiManager.showCountryMenu();
             });
         };
 
         const startRacingGame = (countryName) => {
-            console.log(`Starting Racing Game in ${countryName}...`);
-            
-            // We need to re-initialize the canvas here if the puzzle wrapper was used
-            // but since the puzzle destructor removes the wrapper, we might need a clean start.
-            initCanvas(); // Re-initialize the canvas if needed (if Puzzle removed it)
-
+            initCanvas();
             uiManager.hideCountryMenu();
             uiManager.showHUD();
             
-            // Initialize RacerGame
-            const game = new RacerGame({
+            racerGame = new RacerGame({
                 canvas: gameCanvas,
                 assets,
                 country: countryName
             });
 
-            // Initialize Controls and link to game
             const controls = new TouchControls(gameCanvas);
-            game.setControls(controls); 
+            racerGame.setControls(controls); 
             
-            // The UIManager needs a way to update the time during the race
-            game.onTimeUpdate = (time) => {
+            racerGame.onTimeUpdate = (time) => {
                 uiManager.updateGameTime(time);
             };
 
-            game.start();
+            racerGame.start();
+            
+            // Start the engine audio
+            if (assets.audio_engine) {
+                assets.audio_engine.loop = true;
+                assets.audio_engine.volume = 0.5;
+                assets.audio_engine.play().catch(e => console.log("Engine audio playback blocked.", e));
+            }
         };
 
 
         // --- Initialization ---
 
         const initGame = async () => {
-            await loadAssets();
-            initCanvas();
+            try {
+                await loadAssets();
+                initCanvas();
 
-            // Initialize UIManager and hook up flow
-            uiManager = new UIManager(gameContainer);
-            uiManager.hookCallbacks({
-                onPlay: startPuzzle, 
-                onSelectCountry: startRacingGame
-            });
-            
-            // The UIManager is set to automatically show the Main Menu on creation.
+                uiManager = new UIManager(gameContainer);
+                uiManager.hookCallbacks({
+                    onPlay: startPuzzle, 
+                    onSelectCountry: startRacingGame
+                });
+                
+            } catch (error) {
+                // If loading fails, the error message is already displayed by loadAssets
+            }
         };
 
-        // Start the process
         initGame();
     </script>
 </body>
